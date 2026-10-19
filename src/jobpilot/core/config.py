@@ -100,6 +100,8 @@ class ObservabilityConfig(_Frozen):
     langfuse_enabled: bool = True
     environment: str = "development"
     sample_rate: float = Field(1.0, ge=0, le=1)
+    # Hostnames treated as local for privacy_mode=local_only (e.g. a compose service "langfuse").
+    trusted_trace_hosts: tuple[str, ...] = ()
 
 
 class EvaluationConfig(_Frozen):

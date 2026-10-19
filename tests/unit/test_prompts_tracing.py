@@ -50,7 +50,13 @@ def test_langfuse_mask_redacts_secrets_and_contacts() -> None:
         ("http://localhost:3000", True),
         ("http://127.0.0.1:3000", True),
         ("http://10.0.0.5", True),
-        ("http://langfuse:3000", True),  # compose service name
+        ("http://[::1]:3000", True),
+        ("http://langfuse:3000", False),  # bare names can resolve anywhere via search domains
+        ("http://134744072", False),  # decimal form of 8.8.8.8
+        ("http://0x7f000001", False),  # hex form: ambiguous, rejected
+        ("http://127.1", False),  # shorthand: ambiguous, rejected
+        ("http://169.254.169.254", False),  # link-local / cloud metadata
+        ("http://", False),
         ("https://cloud.langfuse.com", False),
         ("https://8.8.8.8", False),
         (None, False),
@@ -58,6 +64,11 @@ def test_langfuse_mask_redacts_secrets_and_contacts() -> None:
 )
 def test_is_local_endpoint(url: str | None, local: bool) -> None:
     assert is_local_endpoint(url) is local
+
+
+def test_trusted_hosts_allowlist() -> None:
+    assert is_local_endpoint("http://Langfuse:3000", trusted_hosts=["langfuse"]) is True
+    assert is_local_endpoint("http://other:3000", trusted_hosts=["langfuse"]) is False
 
 
 @pytest.mark.parametrize(

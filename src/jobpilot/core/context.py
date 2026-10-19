@@ -52,6 +52,7 @@ class AppContext:
             environment=obs.environment,
             sample_rate=obs.sample_rate,
             local_only=self.config.llm.privacy_mode is PrivacyMode.LOCAL_ONLY,
+            trusted_hosts=obs.trusted_trace_hosts,
         )
 
     @cached_property

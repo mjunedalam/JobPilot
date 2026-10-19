@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Literal, Protocol
 from urllib.parse import urlparse
@@ -64,17 +64,22 @@ def _omit(*, data: Any, **_: Any) -> Any:
     return OMITTED if data is not None else None
 
 
-def is_local_endpoint(url: str | None) -> bool:
-    """True for loopback, private-network IPs and single-label hosts (e.g. a compose service)."""
+def is_local_endpoint(url: str | None, trusted_hosts: Iterable[str] = ()) -> bool:
+    """True only for localhost, loopback/private IP literals, or hosts the user listed in
+    observability.trusted_trace_hosts. Fails closed: bare names (which DNS search domains can
+    resolve anywhere) and numeric or hex host forms (e.g. 134744072 == 8.8.8.8) are rejected."""
     if not url:
         return False
-    host = urlparse(url).hostname or ""
-    if host == "localhost" or "." not in host:
-        return bool(host)
+    host = (urlparse(url).hostname or "").lower()
+    if not host:
+        return False
+    if host == "localhost" or host in {h.lower() for h in trusted_hosts}:
+        return True
     try:
-        return ipaddress.ip_address(host).is_private or ipaddress.ip_address(host).is_loopback
+        ip = ipaddress.ip_address(host)  # only canonical dotted IPv4 / IPv6 literals parse
     except ValueError:
         return False
+    return (ip.is_loopback or ip.is_private) and not ip.is_link_local
 
 
 def _mask(*, data: Any, **_: Any) -> Any:
@@ -131,6 +136,7 @@ def build_tracer(
     environment: str,
     sample_rate: float,
     local_only: bool = False,
+    trusted_hosts: Iterable[str] = (),
 ) -> Tracer:
     """In local_only mode, prompt and output content is exported only to a local or private
     Langfuse; for any other host, traces keep timing, usage and errors but no content."""
@@ -142,5 +148,5 @@ def build_tracer(
         base_url=base_url,
         environment=environment,
         sample_rate=sample_rate,
-        capture_content=not local_only or is_local_endpoint(base_url),
+        capture_content=not local_only or is_local_endpoint(base_url, trusted_hosts),
     )

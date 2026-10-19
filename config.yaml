@@ -41,6 +41,8 @@ observability:
   langfuse_enabled: true                  # still a no-op unless LANGFUSE_* keys are set
   environment: development
   sample_rate: 1.0
+  # Hosts that count as local for privacy_mode=local_only, e.g. [langfuse] for a compose service.
+  trusted_trace_hosts: []
 
 evaluation:
   online_sample_rate: 0.1                 # share of production RAG calls scored by TruLens
