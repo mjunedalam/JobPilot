@@ -83,6 +83,10 @@ def test_kill_switch_blocks_writes_with_423(client: TestClient) -> None:
     assert client.post("/api/v1/system/stop", headers=AUTH, json={}).json()["data"]["engaged"]
     blocked = client.patch("/api/v1/profile", headers=AUTH, json={"fields": {"phone": "1"}})
     assert blocked.status_code == 423
+    answer = client.post(
+        "/api/v1/answers", headers=AUTH, json={"question": "Q one?", "answer": "a"}
+    )
+    assert answer.status_code == 423
     assert client.get("/api/v1/health").json()["data"]["kill_switch_engaged"] is True
     client.post("/api/v1/system/resume", headers=AUTH)
     assert (

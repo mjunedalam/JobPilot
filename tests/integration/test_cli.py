@@ -67,6 +67,7 @@ def test_kill_switch_blocks_writes() -> None:
     _run("stop", "--reason", "testing")
     blocked = runner.invoke(cli.app, ["profile", "set", "phone", "1"])
     assert blocked.exit_code == 2 and "Kill switch engaged" in blocked.output
+    assert runner.invoke(cli.app, ["answers", "add", "Q one?", "a"]).exit_code == 2
     _run("resume")
     _run("profile", "set", "phone", "1")
 

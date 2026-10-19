@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from jobpilot.core.config import AppConfig, Settings
+from jobpilot.core.config import AppConfig, PrivacyMode, Settings
 from jobpilot.core.crypto import Vault
 from jobpilot.core.db import make_engine, make_session_factory
 from jobpilot.core.killswitch import KillSwitch
@@ -51,6 +51,7 @@ class AppContext:
             base_url=self.settings.langfuse_base_url,
             environment=obs.environment,
             sample_rate=obs.sample_rate,
+            local_only=self.config.llm.privacy_mode is PrivacyMode.LOCAL_ONLY,
         )
 
     @cached_property

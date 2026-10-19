@@ -190,6 +190,7 @@ def answers_add(
 ) -> None:
     """Add or update a confirmed screening answer."""
     ctx = _ctx()
+    _guard(ctx)
     with session_scope(ctx.sessions) as session:
         tag_list = [t.strip() for t in tags.split(",") if t.strip()]
         AnswerBank(session).upsert(question, answer, confirmed=True, tags=tag_list)

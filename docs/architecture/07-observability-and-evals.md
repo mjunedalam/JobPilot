@@ -18,6 +18,8 @@ flowchart TD
 - Every tool call is a `tool` observation; RAG is a `retriever`; guardrails are `guardrail` observations.
 - A `mask` function strips secrets and contact details before export.
 - Tracing turns off cleanly when `LANGFUSE_*` keys are absent (no-op tracer).
+- With `privacy_mode: local_only`, prompt and output content is exported only to a local or private-network
+  Langfuse. For any other host, traces keep timing, token usage and errors but replace content with a placeholder.
 
 ## Evaluation with TruLens
 

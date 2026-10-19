@@ -209,6 +209,7 @@ def create_app(ctx: AppContext) -> FastAPI:
         dependencies=auth,
     )
     def add_answer(body: AnswerIn, session: DbSession, rid: RequestId) -> Envelope[AnswerOut]:
+        ctx.kill_switch.check()
         entry = AnswerBank(session).upsert(
             body.question, body.answer, confirmed=True, tags=body.tags
         )
