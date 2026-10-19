@@ -1,0 +1,36 @@
+# Local production-like stack. Langfuse: use Langfuse Cloud, or run its official self-host
+# compose (https://langfuse.com/self-hosting) and point LANGFUSE_BASE_URL at it.
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: jobpilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jobpilot}
+      POSTGRES_DB: jobpilot
+    volumes: [pgdata:/var/lib/postgresql/data]
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobpilot"]
+      interval: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [local-llm]          # docker compose --profile local-llm up
+    volumes: [ollama:/root/.ollama]
+    ports: ["127.0.0.1:11434:11434"]
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://jobpilot:${POSTGRES_PASSWORD:-jobpilot}@postgres:5432/jobpilot
+    depends_on:
+      postgres: {condition: service_healthy}
+    ports: ["127.0.0.1:8765:8765"]
+    volumes: [appdata:/app/data]
+
+volumes:
+  pgdata:
+  ollama:
+  appdata:

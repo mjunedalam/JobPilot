@@ -1,0 +1,78 @@
+[project]
+name = "jobpilot"
+version = "0.1.0"
+description = "Multi-agent job application assistant with strict human-in-the-loop controls"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    # orchestration
+    "langgraph>=1.2",
+    "langgraph-checkpoint-sqlite>=3.1",
+    # LLM providers: Claude via the official SDK, open-source via OpenAI-compatible servers
+    "anthropic>=1.15",
+    "openai>=3.0",
+    # observability
+    "langfuse>=5.0",
+    # API
+    "fastapi>=0.149",
+    "uvicorn[standard]>=0.32",
+    # storage
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14",
+    # core
+    "pydantic>=2.10",
+    "pydantic-settings>=2.6",
+    "cryptography>=44",
+    "tenacity>=9.0",
+    "numpy>=2.1",
+    "pyyaml>=6.0",
+    "typer>=0.15",
+    "rich>=13.9",
+    "httpx>=0.28",
+    # resume parsing
+    "pypdf>=5.1",
+    "python-docx>=1.1",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2", "pgvector>=0.3", "langgraph-checkpoint-postgres>=3.2"]
+embeddings = ["fastembed>=0.9"]
+eval = ["trulens-core>=2.16", "trulens-feedback>=2.16", "trulens-providers-litellm>=2.16"]
+browser = ["playwright>=1.49"]
+all = ["jobpilot[postgres,embeddings,eval,browser]"]
+
+[project.scripts]
+jobpilot = "jobpilot.cli:app"
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-cov>=6.0", "ruff>=0.8", "mypy>=1.13"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jobpilot"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=jobpilot --cov-report=term-missing"
+markers = ["unit", "integration"]
+
+[tool.coverage.run]
+omit = ["src/jobpilot/migrations/*"]
+
+[tool.mypy]
+python_version = "3.14"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["src/jobpilot/migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["B008"]  # typer.Option/Argument defaults are the Typer idiom

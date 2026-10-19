@@ -1,0 +1,1168 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "JobPilot API",
+    "summary": "Multi-agent job application assistant with human-in-the-loop controls",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_HealthOut_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profile": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Get Profile",
+        "operationId": "get_profile_api_v1_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CandidateProfile_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Patch Profile",
+        "operationId": "patch_profile_api_v1_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CandidateProfile_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/versions": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Profile Versions",
+        "operationId": "profile_versions_api_v1_profile_versions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ProfileVersionOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/missing": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Profile Missing",
+        "operationId": "profile_missing_api_v1_profile_missing_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_MissingFieldOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/answers": {
+      "get": {
+        "tags": [
+          "answers"
+        ],
+        "summary": "List Answers",
+        "operationId": "list_answers_api_v1_answers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_AnswerOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "answers"
+        ],
+        "summary": "Add Answer",
+        "operationId": "add_answer_api_v1_answers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AnswerOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/system/stop": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Stop",
+        "operationId": "stop_api_v1_system_stop_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_KillSwitchOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/system/resume": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Resume",
+        "operationId": "resume_api_v1_system_resume_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_KillSwitchOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnswerIn": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Question"
+          },
+          "answer": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Answer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "AnswerIn"
+      },
+      "AnswerOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "confirmed_by_user": {
+            "type": "boolean",
+            "title": "Confirmed By User"
+          },
+          "times_used": {
+            "type": "integer",
+            "title": "Times Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "question",
+          "answer",
+          "tags",
+          "confirmed_by_user",
+          "times_used"
+        ],
+        "title": "AnswerOut"
+      },
+      "CandidateProfile": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "title": "Full Name",
+            "default": ""
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "default": ""
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone",
+            "default": ""
+          },
+          "current_location": {
+            "type": "string",
+            "title": "Current Location",
+            "default": ""
+          },
+          "current_role": {
+            "type": "string",
+            "title": "Current Role",
+            "default": ""
+          },
+          "current_company": {
+            "type": "string",
+            "title": "Current Company",
+            "default": ""
+          },
+          "total_experience_years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Experience Years"
+          },
+          "relevant_experience_years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevant Experience Years"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "default": ""
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/Skill"
+            },
+            "type": "array",
+            "title": "Skills"
+          },
+          "education": {
+            "items": {
+              "$ref": "#/components/schemas/Education"
+            },
+            "type": "array",
+            "title": "Education"
+          },
+          "certifications": {
+            "items": {
+              "$ref": "#/components/schemas/Certification"
+            },
+            "type": "array",
+            "title": "Certifications"
+          },
+          "current_ctc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_ctc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Money"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notice_period_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Period Days"
+          },
+          "preferred_locations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Preferred Locations"
+          },
+          "work_modes": {
+            "items": {
+              "$ref": "#/components/schemas/WorkMode"
+            },
+            "type": "array",
+            "title": "Work Modes"
+          },
+          "target_roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Target Roles"
+          },
+          "target_companies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Target Companies"
+          },
+          "excluded_companies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excluded Companies"
+          },
+          "work_authorization": {
+            "type": "string",
+            "title": "Work Authorization",
+            "default": ""
+          },
+          "links": {
+            "$ref": "#/components/schemas/Links"
+          }
+        },
+        "type": "object",
+        "title": "CandidateProfile"
+      },
+      "Certification": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "issuer": {
+            "type": "string",
+            "title": "Issuer",
+            "default": ""
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "Certification"
+      },
+      "Education": {
+        "properties": {
+          "degree": {
+            "type": "string",
+            "title": "Degree"
+          },
+          "institution": {
+            "type": "string",
+            "title": "Institution",
+            "default": ""
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "type": "object",
+        "required": [
+          "degree"
+        ],
+        "title": "Education"
+      },
+      "Envelope_AnswerOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnswerOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[AnswerOut]"
+      },
+      "Envelope_CandidateProfile_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[CandidateProfile]"
+      },
+      "Envelope_HealthOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[HealthOut]"
+      },
+      "Envelope_KillSwitchOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KillSwitchOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[KillSwitchOut]"
+      },
+      "Envelope_list_AnswerOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AnswerOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[AnswerOut]]"
+      },
+      "Envelope_list_MissingFieldOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MissingFieldOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[MissingFieldOut]]"
+      },
+      "Envelope_list_ProfileVersionOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProfileVersionOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[ProfileVersionOut]]"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          },
+          "kill_switch_engaged": {
+            "type": "boolean",
+            "title": "Kill Switch Engaged"
+          },
+          "llm_privacy_mode": {
+            "type": "string",
+            "title": "Llm Privacy Mode"
+          },
+          "tracing": {
+            "type": "string",
+            "title": "Tracing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database",
+          "kill_switch_engaged",
+          "llm_privacy_mode",
+          "tracing"
+        ],
+        "title": "HealthOut"
+      },
+      "KillSwitchOut": {
+        "properties": {
+          "engaged": {
+            "type": "boolean",
+            "title": "Engaged"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "engaged",
+          "reason"
+        ],
+        "title": "KillSwitchOut"
+      },
+      "Links": {
+        "properties": {
+          "linkedin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedin"
+          },
+          "github": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github"
+          },
+          "portfolio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio"
+          },
+          "other": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Other"
+          }
+        },
+        "type": "object",
+        "title": "Links"
+      },
+      "Meta": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "default": ""
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "title": "Meta"
+      },
+      "MissingFieldOut": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "question"
+        ],
+        "title": "MissingFieldOut"
+      },
+      "Money": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "period": {
+            "type": "string",
+            "title": "Period",
+            "default": "year"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount"
+        ],
+        "title": "Money"
+      },
+      "ProfilePatchIn": {
+        "properties": {
+          "fields": {
+            "additionalProperties": true,
+            "type": "object",
+            "minProperties": 1,
+            "title": "Fields",
+            "description": "Profile fields to overwrite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fields"
+        ],
+        "title": "ProfilePatchIn"
+      },
+      "ProfileVersionOut": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "change_summary": {
+            "type": "string",
+            "title": "Change Summary"
+          },
+          "is_current": {
+            "type": "boolean",
+            "title": "Is Current"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "source",
+          "change_summary",
+          "is_current",
+          "created_at"
+        ],
+        "title": "ProfileVersionOut"
+      },
+      "Skill": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "years": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Years"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "Skill"
+      },
+      "StopIn": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Reason",
+            "default": "stopped via API"
+          }
+        },
+        "type": "object",
+        "title": "StopIn"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WorkMode": {
+        "type": "string",
+        "enum": [
+          "remote",
+          "hybrid",
+          "onsite"
+        ],
+        "title": "WorkMode"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
