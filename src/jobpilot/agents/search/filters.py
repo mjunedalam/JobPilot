@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from jobpilot.agents.search.normalize import normalize_company
-from jobpilot.agents.search.schema import NormalizedJob, _aware
+from jobpilot.agents.search.schema import NormalizedJob, as_utc
 
 
 class SkipReason(StrEnum):
@@ -54,11 +54,11 @@ def _reason(
 ) -> SkipReason | None:
     if normalize_company(job.company) in excluded:
         return SkipReason.EXCLUDED_COMPANY
-    if job.expires_at is not None and _aware(job.expires_at) < _aware(now):
+    if job.expires_at is not None and as_utc(job.expires_at) < as_utc(now):
         return SkipReason.EXPIRED
     if job.posted_at is None:
         # The user picked a recency window; an undated listing can't be shown to be inside it.
         return None if include_undated else SkipReason.UNDATED
-    if not _aware(since) <= _aware(job.posted_at) <= _aware(until):
+    if not as_utc(since) <= as_utc(job.posted_at) <= as_utc(until):
         return SkipReason.OUTSIDE_WINDOW
     return None

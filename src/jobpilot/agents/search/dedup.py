@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from difflib import SequenceMatcher
 
-from jobpilot.agents.search.schema import NormalizedJob
+from jobpilot.agents.search.schema import NormalizedJob, as_utc
 
 TITLE_SIMILARITY = 0.85
 # Postings that differ in level are different jobs even when the rest of the title matches.
@@ -69,8 +69,9 @@ def _first(*values):  # noqa: ANN002, ANN202
 
 def merge(a: NormalizedJob, b: NormalizedJob) -> NormalizedJob:
     """Combine two listings of one job. Returns a new object; inputs are unchanged."""
-    posted = [d for d in (a.posted_at, b.posted_at) if d is not None]
-    expires = [d for d in (a.expires_at, b.expires_at) if d is not None]
+    # Stored rows come back from SQLite naive (UTC); compare everything as aware UTC.
+    posted = [as_utc(d) for d in (a.posted_at, b.posted_at) if d is not None]
+    expires = [as_utc(d) for d in (a.expires_at, b.expires_at) if d is not None]
     richer = a if len(a.description) >= len(b.description) else b
     return a.model_copy(
         update={
@@ -86,6 +87,7 @@ def merge(a: NormalizedJob, b: NormalizedJob) -> NormalizedJob:
             "skills": _union(a.skills, b.skills),
             "portals": _union(a.portals, b.portals),
             "source_urls": _union(a.source_urls, b.source_urls),
+            "source_flags": _union(a.source_flags, b.source_flags),
         }
     )
 

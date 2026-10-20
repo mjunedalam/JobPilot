@@ -117,6 +117,8 @@ class Job(Base):
     match_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     match_reason: Mapped[str] = mapped_column(Text, default="")
     red_flags: Mapped[list[str]] = mapped_column(default=list)
+    # Flags found in any individual listing before dedup (agents/matching/red_flags.py).
+    source_flags: Mapped[list[str]] = mapped_column(default=list)
     status: Mapped[str] = mapped_column(String(32), default=JobStatus.FOUND, index=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -245,3 +247,25 @@ class AppSetting(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[Any] = mapped_column(JSON)
+
+
+class RagChunk(Base):
+    """One retrievable chunk. Embeddings are float32 bytes; search is exact cosine in numpy,
+    which is fast at a single candidate's scale (thousands of chunks)."""
+
+    __tablename__ = "rag_chunks"
+    __table_args__ = (
+        UniqueConstraint("collection", "doc_id", "chunk_index"),
+        Index("ix_rag_collection_doc", "collection", "doc_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    collection: Mapped[str] = mapped_column(String(32))
+    doc_id: Mapped[str] = mapped_column(String(200))
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    meta: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    doc_sha256: Mapped[str] = mapped_column(String(64))
+    embedder: Mapped[str] = mapped_column(String(120))
+    embedding: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

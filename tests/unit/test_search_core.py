@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
+from jobpilot.agents.matching.red_flags import detect_red_flags
 from jobpilot.agents.profile.schema import CandidateProfile, Skill, WorkMode
 from jobpilot.agents.search.dedup import deduplicate, merge, titles_match
 from jobpilot.agents.search.filters import SkipReason, filter_jobs
@@ -145,6 +146,23 @@ class TestDedup:
     def test_title_word_order_does_not_matter(self) -> None:
         assert titles_match("python developer backend", "backend python developer")
 
+    def test_scam_listing_merged_into_real_job_still_taints_it(self) -> None:
+        # Regression: the merged job kept only the longer description, so a short scam listing
+        # copying a real job's title/company/location lost its flags in the merge.
+        real = normalize_posting(
+            raw("linkedin", description="A detailed, legitimate description. " * 20)
+        )
+        scam = normalize_posting(
+            raw("shady", slug="9", description="Pay a registration fee of Rs 2000.")
+        )
+        [merged] = deduplicate([real, scam])
+        assert "Pay a registration fee" not in merged.description  # the longer text won
+        flags = detect_red_flags(merged, CandidateProfile())
+        assert "upfront_fee" in [f.code for f in flags]
+
+    def test_india_and_global_entities_are_not_merged(self) -> None:
+        assert normalize_company("Acme India") != normalize_company("Acme Global")
+
     def test_merge_is_pure(self) -> None:
         a = normalize_posting(raw("naukri"))
         b = normalize_posting(raw("linkedin"))
@@ -202,6 +220,24 @@ class TestRepository:
         )
         assert not created and again.id == first.id
         assert again.portals == ["naukri", "linkedin"]
+
+    def test_reviewed_job_cannot_gain_new_sources(self, session) -> None:
+        repo = JobRepository(session)
+        row, _ = repo.upsert(normalize_posting(raw("naukri")))
+        row.status = JobStatus.APPROVED
+        session.flush()
+        again, created = repo.upsert(
+            normalize_posting(raw("shady", slug="evil", description="Pay a joining fee."))
+        )
+        assert not created and again.id == row.id
+        assert again.source_urls == ["https://naukri.example/job/1"]  # no injected URL
+        assert again.source_flags == []
+
+    def test_source_flags_persist(self, session) -> None:
+        repo = JobRepository(session)
+        repo.upsert(normalize_posting(raw("naukri", description="Normal text " * 20)))
+        row, _ = repo.upsert(normalize_posting(raw("shady", description="Pay a joining fee.")))
+        assert any(f.startswith("high:upfront_fee") for f in row.source_flags)
 
     def test_relisting_never_resets_status(self, session) -> None:
         repo = JobRepository(session)

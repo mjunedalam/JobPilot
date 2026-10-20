@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jobpilot.agents.search.dedup import merge, titles_match
-from jobpilot.agents.search.schema import NormalizedJob
+from jobpilot.agents.search.schema import NormalizedJob, as_utc
 from jobpilot.core.models import Application, Job
 from jobpilot.core.status import JobStatus
 
@@ -26,8 +26,8 @@ def _to_normalized(row: Job) -> NormalizedJob:
         company=row.company,
         location=row.location,
         description=row.description,
-        posted_at=row.posted_at,
-        expires_at=row.expires_at,
+        posted_at=as_utc(row.posted_at) if row.posted_at else None,
+        expires_at=as_utc(row.expires_at) if row.expires_at else None,
         experience_min=row.experience_min,
         experience_max=row.experience_max,
         salary_min=row.salary_min,
@@ -37,6 +37,7 @@ def _to_normalized(row: Job) -> NormalizedJob:
         work_mode=row.work_mode,
         portals=tuple(row.portals),
         source_urls=tuple(row.source_urls),
+        source_flags=tuple(row.source_flags),
     )
 
 
@@ -50,6 +51,7 @@ def _apply(row: Job, job: NormalizedJob) -> None:
     row.salary_currency = job.salary_currency
     row.skills, row.portals = list(job.skills), list(job.portals)
     row.source_urls = list(job.source_urls)
+    row.source_flags = list(job.source_flags)
 
 
 class JobRepository:
@@ -62,8 +64,13 @@ class JobRepository:
 
     def upsert(self, job: NormalizedJob) -> tuple[Job, bool]:
         """Insert a new job, or merge this listing into the matching stored job.
-        Status, score and approval are never reset by a re-listing."""
+
+        Status, score and approval are never reset by a re-listing. A job past `found`
+        (approved, applying, applied…) is frozen: a later listing cannot add a source URL or
+        text to something the user already reviewed."""
         existing = self.find_same(job)
+        if existing is not None and existing.status != JobStatus.FOUND:
+            return existing, False
         if existing is None:
             row = Job(dedup_key=job.dedup_key, status=JobStatus.FOUND)
             _apply(row, job)

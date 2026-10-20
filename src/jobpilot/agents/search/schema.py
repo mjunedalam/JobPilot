@@ -40,21 +40,21 @@ class Recency(BaseModel):
             if self.since is None:
                 raise ValueError("custom recency needs `since`")
             until = self.until or datetime.now(UTC)
-            if _aware(self.since) >= _aware(until):
+            if as_utc(self.since) >= as_utc(until):
                 raise ValueError("`since` must be before `until`")
-            if _aware(until) - _aware(self.since) > MAX_CUSTOM_WINDOW:
+            if as_utc(until) - as_utc(self.since) > MAX_CUSTOM_WINDOW:
                 raise ValueError("custom window is limited to 90 days")
         return self
 
     def window(self, now: datetime | None = None) -> tuple[datetime, datetime]:
-        now = _aware(now or datetime.now(UTC))
+        now = as_utc(now or datetime.now(UTC))
         if self.preset is RecencyPreset.CUSTOM:
             assert self.since is not None
-            return _aware(self.since), _aware(self.until or now)
+            return as_utc(self.since), as_utc(self.until or now)
         return now - _PRESET_DELTAS[self.preset], now
 
 
-def _aware(value: datetime) -> datetime:
+def as_utc(value: datetime) -> datetime:
     """SQLite returns naive datetimes; JobPilot stores UTC, so naive means UTC."""
     return value if value.tzinfo else value.replace(tzinfo=UTC)
 
@@ -103,6 +103,8 @@ class NormalizedJob(BaseModel):
     work_mode: str
     portals: tuple[str, ...]
     source_urls: tuple[str, ...]
+    # Red-flag labels found in any single listing, kept through merges.
+    source_flags: tuple[str, ...] = ()
 
     @property
     def dedup_key(self) -> str:

@@ -5,11 +5,12 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from jobpilot.agents.matching.red_flags import detect_content_flags
 from jobpilot.agents.search.schema import NormalizedJob, RawPosting
 
 _COMPANY_SUFFIXES = re.compile(
     r"\b(private|pvt|limited|ltd|llp|llc|inc|incorporated|corp|corporation|co|company|gmbh|plc|"
-    r"technologies|technology|tech|solutions|services|software|systems|labs|india|global)\b\.?",
+    r"technologies|technology|tech|solutions|services|software|systems|labs)\b\.?",
 )
 _CITY_ALIASES = {
     "bangalore": "bengaluru",
@@ -108,4 +109,5 @@ def normalize_posting(raw: RawPosting) -> NormalizedJob:
         work_mode=raw.work_mode or detect_work_mode(raw.title, raw.location),
         portals=(raw.portal,),
         source_urls=(str(raw.url),),
+        source_flags=tuple(f.label() for f in detect_content_flags(raw.title, raw.description)),
     )

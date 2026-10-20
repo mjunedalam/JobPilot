@@ -20,9 +20,14 @@ _FENCE_TAG = "untrusted_content"
 
 
 def fence_untrusted(text: str, source: str) -> str:
-    """Wrap external text so the model treats it as data. Strips any forged closing tags."""
-    cleaned = re.sub(rf"</?\s*{_FENCE_TAG}[^>]*>", "", text, flags=re.IGNORECASE)
-    return f'<{_FENCE_TAG} source="{source}">\n{cleaned}\n</{_FENCE_TAG}>'
+    """Wrap external text so the model treats it as data.
+
+    Angle brackets inside the text are escaped, so no input can produce a tag, including a
+    nested one such as `</untrusted_</untrusted_content>content>` that a strip-once filter
+    would collapse into a real closing tag."""
+    escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    safe_source = re.sub(r"[^a-z0-9_-]", "", source.lower())
+    return f'<{_FENCE_TAG} source="{safe_source}">\n{escaped}\n</{_FENCE_TAG}>'
 
 
 def injection_signals(text: str) -> list[str]:
