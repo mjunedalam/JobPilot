@@ -504,6 +504,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workflows/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Apply
+         * @description Start an apply run: it pauses at H3 with the ranked list of found jobs.
+         */
+        post: operations["start_apply_api_v1_workflows_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workflows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Workflows */
+        get: operations["list_workflows_api_v1_workflows_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pending Decisions */
+        get: operations["pending_decisions_api_v1_decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/decisions/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Decision */
+        post: operations["answer_decision_api_v1_decisions__thread_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Applications */
+        get: operations["list_applications_api_v1_applications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Application Proof */
+        get: operations["application_proof_api_v1_applications__application_id__proof_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -531,6 +636,35 @@ export interface components {
             confirmed_by_user: boolean;
             /** Times Used */
             times_used: number;
+        };
+        /** ApplicationOut */
+        ApplicationOut: {
+            /** Id */
+            id: number;
+            /** Job Id */
+            job_id: number;
+            /** Title */
+            title: string;
+            /** Company */
+            company: string;
+            /** Portal */
+            portal: string;
+            /** Status */
+            status: string;
+            /** Attempts */
+            attempts: number;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Confirmation Text */
+            confirmation_text: string;
+            /** Has Proof */
+            has_proof: boolean;
+            /** Error */
+            error: string;
+            /** Answers Given */
+            answers_given: {
+                [key: string]: unknown;
+            };
         };
         /** Body_import_resume_api_v1_profile_import_post */
         Body_import_resume_api_v1_profile_import_post: {
@@ -628,6 +762,30 @@ export interface components {
             username: string;
             /** Password */
             password: string;
+        };
+        /** DecisionIn */
+        DecisionIn: {
+            /** Interrupt Id */
+            interrupt_id: string;
+            /** Answer */
+            answer: {
+                [key: string]: unknown;
+            };
+        };
+        /** DecisionOut */
+        DecisionOut: {
+            /** Thread Id */
+            thread_id: string;
+            /** Kind */
+            kind: string;
+            /** Interrupt Id */
+            interrupt_id: string;
+            /** Checkpoint */
+            checkpoint: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
         };
         /** Education */
         Education: {
@@ -795,6 +953,17 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[StartedOut] */
+        Envelope_StartedOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["StartedOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[list[AnswerOut]] */
         Envelope_list_AnswerOut__: {
             /**
@@ -804,6 +973,30 @@ export interface components {
             success: boolean;
             /** Data */
             data?: components["schemas"]["AnswerOut"][] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[list[ApplicationOut]] */
+        Envelope_list_ApplicationOut__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: components["schemas"]["ApplicationOut"][] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[list[DecisionOut]] */
+        Envelope_list_DecisionOut__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: components["schemas"]["DecisionOut"][] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -888,6 +1081,18 @@ export interface components {
             success: boolean;
             /** Data */
             data?: components["schemas"]["RouteOut"][] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[list[WorkflowOut]] */
+        Envelope_list_WorkflowOut__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: components["schemas"]["WorkflowOut"][] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -1388,6 +1593,13 @@ export interface components {
             /** Years */
             years?: number | null;
         };
+        /** StartedOut */
+        StartedOut: {
+            /** Thread Id */
+            thread_id: string;
+            /** Status */
+            status: string;
+        };
         /** StopIn */
         StopIn: {
             /**
@@ -1414,6 +1626,31 @@ export interface components {
          * @enum {string}
          */
         WorkMode: "remote" | "hybrid" | "onsite";
+        /** WorkflowOut */
+        WorkflowOut: {
+            /** Thread Id */
+            thread_id: string;
+            /** Kind */
+            kind: string;
+            /** Status */
+            status: string;
+            /** Error */
+            error: string;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2319,6 +2556,150 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Envelope_PortalOut_"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_apply_api_v1_workflows_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_StartedOut_"];
+                };
+            };
+        };
+    };
+    list_workflows_api_v1_workflows_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_WorkflowOut__"];
+                };
+            };
+        };
+    };
+    pending_decisions_api_v1_decisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_DecisionOut__"];
+                };
+            };
+        };
+    };
+    answer_decision_api_v1_decisions__thread_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_StartedOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_applications_api_v1_applications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_ApplicationOut__"];
+                };
+            };
+        };
+    };
+    application_proof_api_v1_applications__application_id__proof_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -130,6 +130,22 @@ Screening answers for applications (Phase 3) will come from **Agentic RAG** over
 resume and Answer Bank: it grades what it retrieves, rewrites queries, verifies every claim, and
 abstains (so you are asked) instead of guessing. Check it with `uv run jobpilot eval rag`.
 
+## Applying (Phase 3)
+
+On **Approvals**, press **Review found jobs**:
+
+1. **H3**: tick the jobs to apply to (or type "1,3,5-8"). Unticked jobs are marked skipped.
+2. JobPilot opens each approved posting in turn, presses Apply and fills every step from your
+   profile, saved answers and resume. It never invents experience, salary or qualifications.
+3. **H4**: anything required that it can't answer confidently comes to you, with its suggestion,
+   source and confidence. Tick "save" to reuse the answer next time.
+4. **H5**: you see exactly what will be submitted. Submit, edit (you'll see it again), or skip.
+5. The application is sent only with an approval of that exact content, once, with a screenshot
+   and confirmation text kept as proof. A failure is retried once, then marked for manual action.
+
+Decisions wait for you across restarts. `presubmit_preview: false` skips H5, in which case the H3
+approval authorises submission. Daily cap per portal: 25 (configurable).
+
 ## CLI (Phase 1)
 
 | Command | Purpose |
@@ -197,7 +213,7 @@ web/                React + TypeScript UI (pages, typed API client, tests)
 | 1 | Core state, storage, vault, audit, LLM gateway, agent harness, tracing, Profile agent, REST API | **Done** |
 | 1.5 | Open-source default models, runtime provider/model picker, web UI | **Done** (198 backend tests, 95% coverage; 9 UI tests; browser E2E on local models) |
 | 2 | Agentic RAG + TruLens evals, portal connectors + auth, job search, dedup, matching, Jobs and Portals pages | **Done** (see below) |
-| 3 | LangGraph supervisor, HITL interrupts H1–H5, Application agent | Planned |
+| 3 | LangGraph apply workflow (H3–H5 interrupts, restart-safe), Application agent, Approvals page | **Done** |
 | 4 | Email monitor + reply drafting (H6, H7) | Planned |
 | 5 | Analytics & reporting | Planned |
 | 6 | Demo script, end-to-end tests, docs completion | Planned |

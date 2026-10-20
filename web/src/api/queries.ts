@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, unwrap, uploadResume, type Schemas } from "./client";
+import { api, getToken, unwrap, uploadResume, type Schemas } from "./client";
 
 export type Role = Schemas["ModelRole"];
 export type Provider = Schemas["ProviderOut"];
@@ -270,4 +270,70 @@ export function useDisconnectPortal() {
       unwrap(await api.DELETE("/api/v1/portals/{name}/session", { params: { path: { name } } })),
     onSuccess: () => invalidate(jobKeys.portals),
   });
+}
+
+// ---- Workflows and decisions (Phase 3) -----------------------------------------------
+
+export type Decision = Schemas["DecisionOut"];
+export type WorkflowRun = Schemas["WorkflowOut"];
+export type ApplicationRow = Schemas["ApplicationOut"];
+
+export const flowKeys = {
+  decisions: ["decisions"] as const,
+  workflows: ["workflows"] as const,
+  applications: ["applications"] as const,
+};
+
+/** Poll while a run is working so the next decision appears without a refresh. */
+export const useWorkflows = () =>
+  useQuery({
+    queryKey: flowKeys.workflows,
+    queryFn: async () => unwrap(await api.GET("/api/v1/workflows")),
+    refetchInterval: (q) =>
+      (q.state.data ?? []).some((r) => r.status === "running") ? 2000 : 15_000,
+  });
+
+export const useDecisions = (fast: boolean) =>
+  useQuery({
+    queryKey: flowKeys.decisions,
+    queryFn: async () => unwrap(await api.GET("/api/v1/decisions")),
+    refetchInterval: fast ? 2000 : 15_000,
+  });
+
+/** Poll while a run is working: applications change in the background, not on a click. */
+export const useApplications = (fast = false) =>
+  useQuery({
+    queryKey: flowKeys.applications,
+    queryFn: async () => unwrap(await api.GET("/api/v1/applications")),
+    refetchInterval: fast ? 2000 : false,
+  });
+
+export function useStartApply() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async () => unwrap(await api.POST("/api/v1/workflows/apply")),
+    onSuccess: () => invalidate(flowKeys.workflows, flowKeys.decisions),
+  });
+}
+
+export function useAnswerDecision() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ decision, answer }: { decision: Decision; answer: Record<string, unknown> }) =>
+      unwrap(await api.POST("/api/v1/decisions/{thread_id}", {
+        params: { path: { thread_id: decision.thread_id } },
+        body: { interrupt_id: decision.interrupt_id, answer },
+      })),
+    onSettled: () => invalidate(flowKeys.decisions, flowKeys.workflows, flowKeys.applications, jobKeys.jobs),
+  });
+}
+
+/** Proof screenshots need the bearer token, so they are fetched and shown as a blob URL. */
+export async function fetchProof(applicationId: number): Promise<string> {
+  const token = getToken();
+  const response = await fetch(`/api/v1/applications/${applicationId}/proof`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) throw new Error(`proof unavailable (${response.status})`);
+  return URL.createObjectURL(await response.blob());
 }

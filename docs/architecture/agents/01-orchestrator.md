@@ -36,3 +36,14 @@ Every `{{Hn}}` node is a LangGraph `interrupt()`: state is checkpointed, the pro
 | Tracing | one Langfuse span per run; tools, retrievals and generations nested |
 
 Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist, budgets, retries and approval binding apply to every tool call.
+
+## Implementation (Phase 3)
+
+- `agents/orchestrator/apply_graph.py`: review (H3) → next → attempt → ask_field (H4) /
+  ask_preview (H5) / retry / record → next. Pausing nodes only call `interrupt()` and log.
+- `agents/orchestrator/runtime.py`: runs graphs on one background worker (applications strictly
+  one at a time), indexes runs in `workflow_runs`, lists pending decisions, resumes them with
+  `Command(resume=...)`, and on startup continues runs interrupted by a crash. The LangGraph
+  SQLite checkpointer (`data/workflows.db`) holds the state, so pending decisions survive restarts.
+- An invalid H3 selection is asked again with the reason rather than failing the run; the API
+  also validates answers before resuming, and refuses to answer a decision that is no longer pending.

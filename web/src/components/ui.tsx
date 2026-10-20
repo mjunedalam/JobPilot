@@ -1,4 +1,11 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useId,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 type Tone = "neutral" | "amber" | "go" | "sky" | "stop";
 
@@ -58,6 +65,8 @@ export function Panel({
   );
 }
 
+/** Labels its single input explicitly (htmlFor/id), and links hint and error through
+ *  aria-describedby so screen readers announce the label alone as the field's name. */
 export function Field({
   label,
   hint,
@@ -67,19 +76,35 @@ export function Field({
   label: string;
   hint?: ReactNode;
   error?: string;
-  children: ReactNode;
+  children: ReactElement<{ id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean }>;
 }) {
+  const id = useId();
+  const noteId = `${id}-note`;
+  const control = isValidElement(children)
+    ? cloneElement(children, {
+        id: children.props.id ?? id,
+        "aria-describedby": hint || error ? noteId : undefined,
+        "aria-invalid": error ? true : undefined,
+      })
+    : children;
+  const controlId = (isValidElement(children) && children.props.id) || id;
   return (
-    <label className="field">
-      <span className="field-label">{label}</span>
-      {children}
-      {hint && !error && <span className="field-hint">{hint}</span>}
+    <div className="field">
+      <label className="field-label" htmlFor={controlId}>
+        {label}
+      </label>
+      {control}
+      {hint && !error && (
+        <span className="field-hint" id={noteId}>
+          {hint}
+        </span>
+      )}
       {error && (
-        <span className="field-error" role="alert">
+        <span className="field-error" id={noteId} role="alert">
           {error}
         </span>
       )}
-    </label>
+    </div>
   );
 }
 

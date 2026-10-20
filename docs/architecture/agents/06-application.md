@@ -46,3 +46,35 @@ flowchart TD
 | Tracing | one Langfuse span per run; tools, retrievals and generations nested |
 
 Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist, budgets, retries and approval binding apply to every tool call.
+
+## Implementation (Phase 3)
+
+**Replay, don't resume the browser.** An attempt always starts from the posting: open → Apply →
+fill every step → submit. It returns as soon as it needs you (a required field below the
+confidence threshold → H4, or the pre-submit preview → H5). The workflow stores your answer in
+its checkpointed state and starts a fresh attempt. Graph nodes that pause never touch the
+browser, so a restart can't repeat a click halfway through a form.
+
+**Where answers come from** (`agents/application/answers.py`), in order: your H4/H5 answer for
+that field, a value the portal prefilled from your account, profile rules (name, contact, links,
+experience, CTC in the form's units, notice period in the form's units), the confirmed Answer
+Bank, then Agentic RAG for required fields only. Choices are mapped onto the form's real options
+(yes/no, numeric bands like "6-9 years"). An optional field nothing covers stays blank; a required
+one goes to you. Nothing is invented.
+
+**Submitting** is the external tool `apply.submit`. With preview on (default) it needs an H5
+approval whose hash matches `{job_id, answers}`, exactly what the preview showed. With preview off
+it needs the job's H3 approval, bound to `{job_id}`. Each attempt has an idempotency key, so a
+replay never submits twice. The submit button is re-detected on the live page, so the approved
+payload never contains selectors.
+
+**Proof**: a full-page screenshot (`apply.proof`) and the confirmation text.
+
+**Limits**: retry once, then "Failed – needs manual action" with reason and link; daily cap per
+portal (default 25, rolling 24 h); randomised gaps between applications; a blocked portal stops
+for the rest of the run while others continue.
+
+**Verified** in real Chrome against a local multi-step application site (JavaScript "Next",
+POSTed final step): the server received exactly the expected values, and nothing before the H5
+approval. Portal-specific Apply flows on Naukri, LinkedIn and Shine use the same generic form
+engine and are not verified against the live sites.

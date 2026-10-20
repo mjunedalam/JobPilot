@@ -35,8 +35,11 @@ Every response uses one envelope:
 | POST | `/api/v1/search` | Search sources (portal names and/or URLs) within the recency window (H2) |
 | POST | `/api/v1/jobs/import` | Add the postings found on one URL (generic LLM adapter) |
 | GET | `/api/v1/jobs` · `/api/v1/jobs/{id}` | Ranked jobs awaiting review, with score, reason, red flags, sources |
-| GET | `/api/v1/decisions/pending` | Pending HITL decisions (Phase 3) |
-| POST | `/api/v1/decisions/{id}` | Answer a HITL decision (Phase 3) |
+| POST | `/api/v1/workflows/apply` | Start an apply run; it pauses at H3 with the ranked found jobs |
+| GET | `/api/v1/workflows` | Runs with status (running / waiting / done / halted / failed) and summary |
+| GET | `/api/v1/decisions` | Pending decisions (H3 jobs, H4 questions, H5 preview) with their interrupt id |
+| POST | `/api/v1/decisions/{thread_id}` | Answer one (`interrupt_id` + `answer`); validated first; 409 if no longer pending |
+| GET | `/api/v1/applications` · `/{id}/proof` | Applications with status, confirmation, proof screenshot |
 | GET | `/api/v1/stats?from=&to=` | Analytics (Phase 5) |
 
 The API binds to `127.0.0.1` by default and requires a bearer token (`JOBPILOT_API_TOKEN`).
