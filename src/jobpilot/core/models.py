@@ -269,3 +269,20 @@ class RagChunk(Base):
     embedder: Mapped[str] = mapped_column(String(120))
     embedding: Mapped[bytes] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class WorkflowRun(Base):
+    """Index of LangGraph threads. The graph state itself lives in the checkpointer."""
+
+    __tablename__ = "workflow_runs"
+
+    thread_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    # running | waiting (for the user) | done | halted (kill switch) | failed
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    error: Mapped[str] = mapped_column(Text, default="")
+    summary: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )

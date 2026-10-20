@@ -5,14 +5,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
+from typing import cast
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from jobpilot.agents.application.agent import ApplicationAgent
+from jobpilot.agents.application.service import ApplicationService
+from jobpilot.agents.orchestrator.apply_graph import build_apply_graph
+from jobpilot.agents.orchestrator.runtime import WorkflowRuntime
+from jobpilot.agents.portal.agent import PortalConnector
 from jobpilot.agents.search.agent import SearchAgent
+from jobpilot.agents.specs import APPLICATION
 from jobpilot.core.config import AppConfig, Settings
 from jobpilot.core.crypto import Vault, VaultError
-from jobpilot.core.db import make_engine, make_session_factory
+from jobpilot.core.db import make_engine, make_session_factory, session_scope
 from jobpilot.core.killswitch import KillSwitch
 from jobpilot.harness.circuit import CircuitBreaker
 from jobpilot.harness.runner import AgentHarness, AgentSpec
@@ -20,7 +27,7 @@ from jobpilot.harness.tools import ToolRegistry
 from jobpilot.llm.settings import PrivacyState, RuntimeGateway
 from jobpilot.observability.tracing import Tracer, build_tracer
 from jobpilot.portals.base import PortalAdapter
-from jobpilot.portals.browser import PageFetcher, PlaywrightFetcher
+from jobpilot.portals.browser import ApplyBrowser, PageFetcher, PlaywrightFetcher
 
 
 @dataclass
@@ -106,6 +113,83 @@ class AppContext:
             vault=self.optional_vault,
             tracer=self.tracer,
             fetcher_factory=lambda adapter, state: self.fetcher(adapter, state),
+        )
+
+    def rag_answer(self, question: str) -> tuple[str, float]:
+        """Agentic RAG over the candidate's own data, through a budgeted harness."""
+        from jobpilot.rag.agentic import AgenticRAG
+        from jobpilot.rag.embeddings import build_embedder
+        from jobpilot.rag.knowledge import CANDIDATE_COLLECTIONS, KnowledgeBase
+        from jobpilot.rag.retriever import HybridRetriever
+        from jobpilot.rag.store import VectorStore
+
+        embedder = build_embedder(
+            self.config.rag.embedding_provider, self.config.rag.embedding_model
+        )
+        with session_scope(self.sessions) as session:
+            KnowledgeBase(session, VectorStore(session, embedder), self.resume_dir).sync()
+        with session_scope(self.sessions) as session:
+            rag = AgenticRAG(
+                self.harness(APPLICATION),
+                HybridRetriever(VectorStore(session, embedder)),
+                self.config.rag,
+            )
+            result = rag.answer(question, CANDIDATE_COLLECTIONS)
+        return ("", 0.0) if result.abstained else (result.answer, result.confidence)
+
+    def application_service(self) -> ApplicationService:
+        def harness_for(registry: ToolRegistry, allowed: frozenset[str]) -> AgentHarness:
+            spec = AgentSpec(
+                name=APPLICATION.name,
+                model_role=APPLICATION.model_role,
+                allowed_tools=allowed,
+                budget=APPLICATION.budget,
+            )
+            return AgentHarness(
+                spec,
+                registry=registry,
+                llm=self.gateway,
+                sessions=self.sessions,
+                kill_switch=self.kill_switch,
+                tracer=self.tracer,
+                circuit=self.circuit,
+            )
+
+        def browser_for(adapter: PortalAdapter) -> ApplyBrowser:
+            with session_scope(self.sessions) as session:
+                state = PortalConnector(session, self.optional_vault).load_session(adapter.name)
+            return cast(ApplyBrowser, self.fetcher(adapter, state))
+
+        return ApplicationService(
+            sessions=self.sessions,
+            agent=ApplicationAgent(harness_for, browser_for),
+            config=self.config.application,
+            vault=self.optional_vault,
+            llm=self.gateway,
+            resume_dir=self.resume_dir,
+            proof_dir=self.proof_dir,
+            rag=self.rag_answer,
+        )
+
+    @cached_property
+    def workflows(self) -> WorkflowRuntime:
+        app_cfg = self.config.application
+        delay = (
+            float(app_cfg.min_delay_seconds),
+            float(max(app_cfg.max_delay_seconds, app_cfg.min_delay_seconds)),
+        )
+        return WorkflowRuntime(
+            sessions=self.sessions,
+            kill_switch=self.kill_switch,
+            checkpoint_path=self.settings.data_dir / "workflows.db",
+            graphs={
+                "apply": lambda saver: build_apply_graph(
+                    self.application_service(),
+                    preview=app_cfg.presubmit_preview,
+                    delay=delay,
+                    checkpointer=saver,
+                )
+            },
         )
 
     def harness(self, spec: AgentSpec) -> AgentHarness:

@@ -15,13 +15,20 @@ def make_engine(url: str) -> Engine:
         Path(url.removeprefix("sqlite:///")).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(url, future=True)
     if engine.dialect.name == "sqlite":
-        event.listen(engine, "connect", _enable_sqlite_foreign_keys)
+        event.listen(engine, "connect", _configure_sqlite)
     return engine
 
 
-def _enable_sqlite_foreign_keys(dbapi_conn, _record) -> None:  # noqa: ANN001
+SQLITE_BUSY_TIMEOUT_MS = 10_000
+
+
+def _configure_sqlite(dbapi_conn, _record) -> None:  # noqa: ANN001
+    """WAL lets readers and one writer proceed together, which the API, the background workflow
+    worker and the harness audit trail all rely on; busy_timeout waits instead of failing."""
     cursor = dbapi_conn.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
     cursor.close()
 
 

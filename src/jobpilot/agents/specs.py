@@ -28,4 +28,11 @@ SEARCH = AgentSpec(
     budget=Budget(max_steps=50, max_tokens=200_000, max_cost_usd=0.50, deadline_s=1800),
 )
 
-SPECS: dict[str, AgentSpec] = {spec.name: spec for spec in (PROFILE, MATCHING, SEARCH)}
+APPLICATION = AgentSpec(
+    name="application_agent",
+    model_role=ModelRole.REASONING,
+    # Per attempt. Tools are registered per attempt (apply.open/click/fill/submit/proof).
+    budget=Budget(max_steps=80, max_tokens=300_000, max_cost_usd=0.50, deadline_s=900),
+)
+
+SPECS: dict[str, AgentSpec] = {spec.name: spec for spec in (PROFILE, MATCHING, SEARCH, APPLICATION)}

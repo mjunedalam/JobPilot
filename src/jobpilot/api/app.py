@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -14,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from jobpilot.api.envelope import fail
-from jobpilot.api.routes import answers, jobs, llm, portals, profile, system
+from jobpilot.api.routes import answers, jobs, llm, portals, profile, system, workflows
 from jobpilot.core.context import AppContext
 from jobpilot.core.killswitch import KillSwitchEngaged
 
@@ -23,8 +25,21 @@ API_PREFIX = "/api/v1"
 WEB_DIST = Path(__file__).resolve().parents[3] / "web" / "dist"
 
 
-def create_app(ctx: AppContext, web_dist: Path | None = WEB_DIST) -> FastAPI:
+def create_app(
+    ctx: AppContext, web_dist: Path | None = WEB_DIST, recover_workflows: bool = True
+) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        if recover_workflows:
+            resumed = ctx.workflows.recover()  # continue runs interrupted by a restart
+            if resumed:
+                log.info("resumed %d interrupted workflow(s)", len(resumed))
+        yield
+        if "workflows" in ctx.__dict__:
+            ctx.workflows.shutdown()
+
     app = FastAPI(
+        lifespan=lifespan,
         title="JobPilot API",
         version="0.2.0",
         summary="Multi-agent job application assistant with human-in-the-loop controls",
@@ -33,7 +48,7 @@ def create_app(ctx: AppContext, web_dist: Path | None = WEB_DIST) -> FastAPI:
         redoc_url=None,
     )
     app.state.ctx = ctx
-    for module in (system, profile, answers, llm, jobs, portals):
+    for module in (system, profile, answers, llm, jobs, portals, workflows):
         app.include_router(module.router, prefix=API_PREFIX)
     _register_error_handlers(app)
 

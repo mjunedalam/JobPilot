@@ -1330,6 +1330,208 @@
           }
         }
       }
+    },
+    "/api/v1/workflows/apply": {
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Start Apply",
+        "description": "Start an apply run: it pauses at H3 with the ranked list of found jobs.",
+        "operationId": "start_apply_api_v1_workflows_apply_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_StartedOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/workflows": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "List Workflows",
+        "operationId": "list_workflows_api_v1_workflows_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_WorkflowOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/decisions": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Pending Decisions",
+        "operationId": "pending_decisions_api_v1_decisions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_DecisionOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/decisions/{thread_id}": {
+      "post": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Answer Decision",
+        "operationId": "answer_decision_api_v1_decisions__thread_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_StartedOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/applications": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "List Applications",
+        "operationId": "list_applications_api_v1_applications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ApplicationOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/applications/{application_id}/proof": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Application Proof",
+        "operationId": "application_proof_api_v1_applications__application_id__proof_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1404,6 +1606,83 @@
           "times_used"
         ],
         "title": "AnswerOut"
+      },
+      "ApplicationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "portal": {
+            "type": "string",
+            "title": "Portal"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "confirmation_text": {
+            "type": "string",
+            "title": "Confirmation Text"
+          },
+          "has_proof": {
+            "type": "boolean",
+            "title": "Has Proof"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "answers_given": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Answers Given"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_id",
+          "title",
+          "company",
+          "portal",
+          "status",
+          "attempts",
+          "submitted_at",
+          "confirmation_text",
+          "has_proof",
+          "error",
+          "answers_given"
+        ],
+        "title": "ApplicationOut"
       },
       "Body_import_resume_api_v1_profile_import_post": {
         "properties": {
@@ -1640,6 +1919,61 @@
           "password"
         ],
         "title": "CredentialsIn"
+      },
+      "DecisionIn": {
+        "properties": {
+          "interrupt_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Interrupt Id"
+          },
+          "answer": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Answer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interrupt_id",
+          "answer"
+        ],
+        "title": "DecisionIn"
+      },
+      "DecisionOut": {
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "title": "Thread Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "interrupt_id": {
+            "type": "string",
+            "title": "Interrupt Id"
+          },
+          "checkpoint": {
+            "type": "string",
+            "title": "Checkpoint"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id",
+          "kind",
+          "interrupt_id",
+          "checkpoint",
+          "payload"
+        ],
+        "title": "DecisionOut"
       },
       "Education": {
         "properties": {
@@ -2146,6 +2480,40 @@
         "type": "object",
         "title": "Envelope[SearchReportOut]"
       },
+      "Envelope_StartedOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StartedOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[StartedOut]"
+      },
       "Envelope_list_AnswerOut__": {
         "properties": {
           "success": {
@@ -2183,6 +2551,82 @@
         },
         "type": "object",
         "title": "Envelope[list[AnswerOut]]"
+      },
+      "Envelope_list_ApplicationOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ApplicationOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[ApplicationOut]]"
+      },
+      "Envelope_list_DecisionOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DecisionOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[DecisionOut]]"
       },
       "Envelope_list_JobOut__": {
         "properties": {
@@ -2449,6 +2893,44 @@
         },
         "type": "object",
         "title": "Envelope[list[RouteOut]]"
+      },
+      "Envelope_list_WorkflowOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WorkflowOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[WorkflowOut]]"
       },
       "ErrorBody": {
         "properties": {
@@ -3705,6 +4187,24 @@
         ],
         "title": "Skill"
       },
+      "StartedOut": {
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "title": "Thread Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id",
+          "status"
+        ],
+        "title": "StartedOut"
+      },
       "StopIn": {
         "properties": {
           "reason": {
@@ -3765,6 +4265,52 @@
           "onsite"
         ],
         "title": "WorkMode"
+      },
+      "WorkflowOut": {
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "title": "Thread Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "thread_id",
+          "kind",
+          "status",
+          "error",
+          "summary",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "WorkflowOut"
       }
     },
     "securitySchemes": {

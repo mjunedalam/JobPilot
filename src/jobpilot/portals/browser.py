@@ -44,6 +44,22 @@ class PageFetcher(Protocol):
     def close(self) -> None: ...
 
 
+class ApplyBrowser(PageFetcher, Protocol):
+    """What the Application agent needs on top of fetching: filling forms and keeping proof."""
+
+    def select_option(self, selector: str, option: str) -> None: ...
+
+    def check_radio(self, group_selector: str, option: str) -> None: ...
+
+    def set_checked(self, selector: str, checked: bool) -> None: ...
+
+    def upload(self, selector: str, path: str) -> None: ...
+
+    def screenshot(self, path: str) -> None: ...
+
+    def settle(self) -> FetchedPage: ...
+
+
 def obviously_local(url: str) -> bool:
     """Cheap first-layer check with no DNS lookup and no cached verdicts. Hostnames are vetted
     by the egress proxy at connect time, against the address it actually connects to."""
@@ -126,6 +142,48 @@ class PlaywrightFetcher:
 
     def click(self, selector: str) -> None:
         self._page.click(selector, timeout=NAV_TIMEOUT_MS)
+
+    # ---- form interaction (Application agent) --------------------------------------------
+
+    def select_option(self, selector: str, option: str) -> None:
+        self._page.select_option(selector, label=option, timeout=NAV_TIMEOUT_MS)
+
+    def check_radio(self, group_selector: str, option: str) -> None:
+        """Click the radio in the group whose label text is `option`."""
+        clicked = self._page.evaluate(
+            """([sel, wanted]) => {
+                for (const r of document.querySelectorAll(sel)) {
+                    const text = [...(r.labels || [])].map(l => l.innerText.trim()).join(' ')
+                        || r.getAttribute('aria-label') || r.value;
+                    if (text.trim().toLowerCase() === wanted.toLowerCase()) {
+                        r.click();
+                        return true;
+                    }
+                }
+                return false;
+            }""",
+            [group_selector, option],
+        )
+        if not clicked:
+            raise ValueError(f"no radio option '{option}' in {group_selector}")
+
+    def set_checked(self, selector: str, checked: bool) -> None:
+        self._page.set_checked(selector, checked, timeout=NAV_TIMEOUT_MS)
+
+    def upload(self, selector: str, path: str) -> None:
+        self._page.set_input_files(selector, path, timeout=NAV_TIMEOUT_MS)
+
+    def screenshot(self, path: str) -> None:
+        self._page.screenshot(path=path, full_page=True)
+
+    def settle(self) -> FetchedPage:
+        """After a click: wait for navigation or DOM updates to finish, then return the page."""
+        with contextlib.suppress(Exception):
+            self._page.wait_for_load_state("domcontentloaded", timeout=NAV_TIMEOUT_MS)
+            self._page.wait_for_load_state("networkidle", timeout=SETTLE_MS)
+        if obviously_local(self._page.url):
+            raise NonPublicURL(f"navigation ended on a non-public address: {self._page.url}")
+        return self.current()
 
     def current(self) -> FetchedPage:
         return FetchedPage(
