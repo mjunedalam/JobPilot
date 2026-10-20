@@ -1,0 +1,114 @@
+/* JobPilot design tokens: "flight deck" editorial.
+   Day = warm paper and ink. Night = cockpit black with amber instruments.
+   Colour is semantic: amber = attention/action, go = local/approved, sky = cloud, stop = kill switch. */
+
+:root {
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  --text-hero: clamp(2.5rem, 1.6rem + 3.2vw, 4.25rem);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 140ms;
+  --duration-normal: 260ms;
+
+  --rail-width: 248px;
+}
+
+:root,
+:root[data-theme="light"] {
+  --paper: #f3efe6;
+  --paper-2: #ebe5d8;
+  --card: #fbf9f4;
+  --ink: #1a1712;
+  --ink-2: #57514a;
+  --ink-3: #8a8274;
+  --rule: #ddd5c5;
+  --rule-strong: #c9bfab;
+
+  --amber: #d9480f;
+  --amber-ink: #fbf9f4;
+  --amber-soft: #f8e1d1;
+  --go: #2f7d4f;
+  --go-soft: #dcecdf;
+  --sky: #2b59c3;
+  --sky-soft: #dde5f6;
+  --stop: #b42318;
+  --stop-soft: #f6dad6;
+
+  --shadow-card: 0 1px 0 rgb(26 23 18 / 0.04), 0 12px 32px -18px rgb(26 23 18 / 0.25);
+  --shadow-pop: 0 18px 50px -20px rgb(26 23 18 / 0.45);
+  --grain-opacity: 0.35;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e1013;
+    --paper-2: #14171c;
+    --card: #181b21;
+    --ink: #ece7dd;
+    --ink-2: #aaa397;
+    --ink-3: #6f6a60;
+    --rule: #2a2e35;
+    --rule-strong: #3a3f48;
+
+    --amber: #ff8a3d;
+    --amber-ink: #160b04;
+    --amber-soft: rgb(255 138 61 / 0.14);
+    --go: #5bc28a;
+    --go-soft: rgb(91 194 138 / 0.14);
+    --sky: #7aa2ff;
+    --sky-soft: rgb(122 162 255 / 0.14);
+    --stop: #ff6b5e;
+    --stop-soft: rgb(255 107 94 / 0.14);
+
+    --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03), 0 16px 40px -22px rgb(0 0 0 / 0.8);
+    --shadow-pop: 0 24px 60px -20px rgb(0 0 0 / 0.85);
+    --grain-opacity: 0.18;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #0e1013;
+  --paper-2: #14171c;
+  --card: #181b21;
+  --ink: #ece7dd;
+  --ink-2: #aaa397;
+  --ink-3: #6f6a60;
+  --rule: #2a2e35;
+  --rule-strong: #3a3f48;
+
+  --amber: #ff8a3d;
+  --amber-ink: #160b04;
+  --amber-soft: rgb(255 138 61 / 0.14);
+  --go: #5bc28a;
+  --go-soft: rgb(91 194 138 / 0.14);
+  --sky: #7aa2ff;
+  --sky-soft: rgb(122 162 255 / 0.14);
+  --stop: #ff6b5e;
+  --stop-soft: rgb(255 107 94 / 0.14);
+
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03), 0 16px 40px -22px rgb(0 0 0 / 0.8);
+  --shadow-pop: 0 24px 60px -20px rgb(0 0 0 / 0.85);
+  --grain-opacity: 0.18;
+}

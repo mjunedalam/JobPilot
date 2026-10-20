@@ -55,29 +55,38 @@ All diagrams are Mermaid and live in [docs/architecture/](docs/architecture/READ
 
 ## Tech stack
 
-Python 3.14 · uv · LangGraph 1.x · Claude through the official Anthropic SDK · open-source models
-(Llama, Qwen, Mistral) through Ollama/vLLM · Agentic RAG with pgvector and FastEmbed · Langfuse ·
+Python 3.14 · uv · LangGraph 1.x · open-source models (Qwen, Gemma, Llama) through Ollama by default,
+any OpenAI-compatible provider, Claude through the official Anthropic SDK, LiteLLM for the rest ·
+React 19 + TypeScript web UI typed from the OpenAPI spec · Agentic RAG with pgvector and FastEmbed · Langfuse ·
 TruLens · FastAPI with OpenAPI 3.1 · PostgreSQL 17 + pgvector (SQLite locally) · SQLAlchemy 2 +
 Alembic · Playwright · APScheduler · tenacity · Fernet vault · Docker Compose.
 
-## Switching models (paid ↔ open-source)
+## Models: open-source by default, any provider you like
 
-Agents ask for a **role** (`reasoning`, `extraction`, `writing`, `fast`, `router`, `judge`), never a
-vendor. `config.yaml` maps each role to a provider and model, with fallbacks:
+Every agent role (`reasoning`, `extraction`, `writing`, `fast`, `router`, `judge`) runs on **local
+open-source models through Ollama** out of the box:
 
-```yaml
-llm:
-  privacy_mode: standard     # set to local_only and no prompt ever leaves your machine
-  roles:
-    reasoning:
-      provider: anthropic
-      model: claude-opus-5-5
-      fallbacks: [{provider: local, model: qwen3:14b}]
-```
+| Role | Default model |
+|------|---------------|
+| reasoning, extraction | `qwen3:8b` |
+| writing, judge | `gemma3:12b` |
+| fast, router | `llama3.2:3b` |
 
-To run fully on open-source models, start Ollama (`docker compose --profile local-llm up -d ollama`,
-then `ollama pull qwen3:14b`) and set `privacy_mode: local_only`. Every role needs a `local` target in
-its route or fallbacks; the gateway refuses to start a call otherwise rather than silently using Claude.
+Pull them once: `ollama pull qwen3:8b gemma3:12b llama3.2:3b`.
+
+To use a different provider or model for any role, open **Models** in the web UI (or call
+`PUT /api/v1/llm/routes/{role}`):
+
+- **Pick a provider and model per role.** The model list is fetched live from the provider, or you can
+  type any model id. Add up to two fallbacks and press **Test flight** to send a real request.
+- **Add providers from presets:** Ollama, LM Studio, vLLM, Anthropic (Claude), OpenAI, Google Gemini,
+  Groq, Mistral, DeepSeek, OpenRouter, Together, Fireworks, xAI, LiteLLM (Bedrock, Vertex, Azure, Cohere),
+  or any OpenAI-compatible URL. API keys are stored encrypted and are never shown again.
+- **Privacy mode `local_only`** sends prompts only to providers on localhost or your private network.
+
+Changes apply on the next call; no restart. See [LLM gateway](docs/architecture/05-llm-gateway.md)
+for why local presets default to JSON-object mode with thinking off (measured: ~10x faster, complete
+extractions).
 
 ## Quick start (local mode)
 
@@ -87,11 +96,15 @@ cp .env.example .env                     # then fill in the values below
 uv run jobpilot keygen                   # → JOBPILOT_MASTER_KEY
 uv run jobpilot keygen --token           # → JOBPILOT_API_TOKEN
 uv run jobpilot init                     # create the database and run migrations
-uv run jobpilot profile import path/to/resume.pdf --label backend
-uv run jobpilot profile show
-uv run jobpilot api serve                # REST API on 127.0.0.1:8765, docs at /api/v1/docs
-uv run pytest                            # tests + coverage
+uv run jobpilot profile import path/to/resume.pdf --label backend   # or use the Profile page
+(cd web && npm ci && npm run build)     # build the web UI (Node 22+, see web/.nvmrc)
+uv run jobpilot api serve                # UI + REST API on http://127.0.0.1:8765
+uv run pytest                            # backend tests + coverage
+(cd web && npm test)                     # UI tests
 ```
+
+Open http://127.0.0.1:8765 and paste your `JOBPILOT_API_TOKEN`. For UI development, run
+`npm run dev` in `web/` (port 5173, proxies the API).
 
 Optional extras: `uv sync --extra postgres --extra embeddings --extra eval --extra browser`
 (or `--extra all`).
@@ -135,11 +148,12 @@ src/jobpilot/
 ├── rag/            Agentic RAG (Phase 2)
 ├── evals/          TruLens suites (Phase 2)
 ├── portals/        adapter interface + Naukri, LinkedIn, Shine, Generic (Phase 2)
-├── api/            FastAPI app, envelope, DTOs
+├── api/            FastAPI app, routers (system, profile, answers, llm), envelope, DTOs
 ├── prompts/        one versioned prompt file per agent task
 ├── migrations/     Alembic
 └── cli.py
 tests/unit, tests/integration
+web/                React + TypeScript UI (pages, typed API client, tests)
 ```
 
 ## Security and compliance
@@ -159,7 +173,8 @@ tests/unit, tests/integration
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| 1 | Core state, storage, vault, audit, LLM gateway, agent harness, tracing, Profile agent, REST API | **Done** (128 tests, 96% coverage) |
+| 1 | Core state, storage, vault, audit, LLM gateway, agent harness, tracing, Profile agent, REST API | **Done** |
+| 1.5 | Open-source default models, runtime provider/model picker, web UI | **Done** (198 backend tests, 95% coverage; 9 UI tests; browser E2E on local models) |
 | 2 | Agentic RAG + TruLens evals, portal connector + auth, job search, dedup, matching | Next |
 | 3 | LangGraph supervisor, HITL interrupts H1–H5, Application agent | Planned |
 | 4 | Email monitor + reply drafting (H6, H7) | Planned |

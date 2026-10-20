@@ -1,0 +1,31 @@
+import { createBrowserRouter, RouterProvider } from "react-router";
+import { Shell } from "./components/Shell";
+import { TokenGate } from "./components/TokenGate";
+import { Answers } from "./pages/Answers";
+import { FlightDeck } from "./pages/FlightDeck";
+import { Models } from "./pages/Models";
+import { Profile } from "./pages/Profile";
+import { System } from "./pages/System";
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Shell />,
+    children: [
+      { index: true, element: <FlightDeck /> },
+      { path: "profile", element: <Profile /> },
+      { path: "answers", element: <Answers /> },
+      { path: "models", element: <Models /> },
+      { path: "system", element: <System /> },
+      { path: "*", element: <FlightDeck /> },
+    ],
+  },
+]);
+
+export function App() {
+  return (
+    <TokenGate>
+      <RouterProvider router={router} />
+    </TokenGate>
+  );
+}

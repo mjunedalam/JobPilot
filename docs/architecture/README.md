@@ -14,6 +14,7 @@ All diagrams are Mermaid and render on GitHub and in VS Code (Markdown Preview M
 | [07-observability-and-evals.md](07-observability-and-evals.md) | Langfuse tracing and TruLens evaluation |
 | [08-api.md](08-api.md) | REST API and OpenAPI spec |
 | [09-tech-stack.md](09-tech-stack.md) | Technology choices and reasons |
+| [10-web-ui.md](10-web-ui.md) | Web UI pages, data flow and design direction |
 
 ## Per-agent pages
 
