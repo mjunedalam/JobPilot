@@ -69,6 +69,19 @@ def ctx(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[AppContext]
     context.engine.dispose()
 
 
+@pytest.fixture(autouse=True)
+def _public_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    import socket
+
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda host, port, *a, **k: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.215.14", port))
+        ],
+    )
+
+
 @pytest.fixture
 def client(ctx: AppContext) -> TestClient:
     return TestClient(create_app(ctx, web_dist=None))
@@ -201,3 +214,10 @@ def test_login_stops_at_captcha_with_h1(
         if p["name"] == "naukri"
     )
     assert status["status"] in ("needs_attention", "blocked")
+
+
+def test_import_refuses_private_network_url(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/jobs/import", headers=AUTH, json={"url": "http://192.168.1.1/jobs"}
+    )
+    assert response.status_code == 400 and "public" in response.json()["error"]["message"]
