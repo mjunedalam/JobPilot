@@ -50,12 +50,17 @@ _PERSONAL_EMAIL = re.compile(
 )
 _CHAT_ONLY = re.compile(r"\b(whats\s?app|telegram)\b", re.IGNORECASE)
 EXPERIENCE_GAP_YEARS = 3
-MIN_DESCRIPTION_CHARS = 120
+# Codes detect_content_flags can produce. Carried labels with other codes come from retired
+# rules (e.g. the old thin_description flag) and are ignored rather than kept forever.
+CONTENT_FLAG_CODES = frozenset({"upfront_fee", "scam_language", "personal_email", "chat_contact"})
 
 
 def detect_content_flags(title: str, description: str) -> list[RedFlag]:
-    """Flags that depend only on the posting text. Computed per listing before dedup, so a scam
-    listing merged into a genuine job (whose longer description would win) still taints it."""
+    """Flags that depend only on the posting text, computed per listing before dedup so a scam
+    listing merged into a genuine job (whose longer description wins) still taints it.
+
+    Short text is not flagged: listing pages show one-line summaries, and that flagged every
+    job on a real board (python.org/jobs)."""
     text = f"{title}\n{description}"
     flags: list[RedFlag] = []
     if _FEE.search(text):
@@ -72,10 +77,6 @@ def detect_content_flags(title: str, description: str) -> list[RedFlag]:
         flags.append(
             RedFlag("chat_contact", Severity.SOFT, "asks to continue on WhatsApp/Telegram")
         )
-    if description and len(description) < MIN_DESCRIPTION_CHARS:
-        flags.append(
-            RedFlag("thin_description", Severity.SOFT, "very little detail about the role")
-        )
     return flags
 
 
@@ -85,7 +86,7 @@ def detect_red_flags(job: NormalizedJob, profile: CandidateProfile) -> list[RedF
     seen = {f.code for f in flags}
     for label in job.source_flags:
         carried = RedFlag.from_label(label)
-        if carried is not None and carried.code not in seen:
+        if carried is not None and carried.code in CONTENT_FLAG_CODES and carried.code not in seen:
             flags.append(carried)
             seen.add(carried.code)
     years = profile.total_experience_years
@@ -114,5 +115,5 @@ def needs_second_opinion(flags: list[RedFlag]) -> bool:
     return (
         bool(flags)
         and all(f.severity is Severity.SOFT for f in flags)
-        and any(f.code in {"personal_email", "chat_contact", "thin_description"} for f in flags)
+        and any(f.code in {"personal_email", "chat_contact"} for f in flags)
     )

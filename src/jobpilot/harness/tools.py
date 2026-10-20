@@ -30,9 +30,11 @@ class Tool:
     checkpoint: Checkpoint | None = None
     timeout_s: float = 60.0
     retries: int = 0
-    circuit_key: str | None = (
-        None  # e.g. "portal:naukri"; failures open the circuit for all its tools
-    )
+    # e.g. "portal:naukri": failures open the circuit for every tool sharing the key.
+    circuit_key: str | None = None
+    # Run on the calling thread instead of the timeout worker. For thread-bound clients (the
+    # Playwright sync API); such a tool must enforce its own timeouts.
+    inline: bool = False
 
     def __post_init__(self) -> None:
         if self.side_effect is SideEffect.EXTERNAL and self.checkpoint is None:

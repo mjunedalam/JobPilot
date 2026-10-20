@@ -6,6 +6,7 @@ import {
   useHealth,
   useKillSwitch,
   useMissing,
+  usePortals,
   useProfile,
   useProviders,
   useRoutes,
@@ -69,6 +70,8 @@ export function FlightDeck() {
   const providers = useProviders();
   const health = useHealth();
   const kill = useKillSwitch();
+  const portals = usePortals();
+  const enabledPortals = (portals.data ?? []).filter((p) => p.enabled).length;
 
   const firstName = profile.data?.full_name?.split(" ")[0];
   const missingCount = missing.data?.length ?? 0;
@@ -79,7 +82,7 @@ export function FlightDeck() {
   return (
     <div className="page deck">
       <header className="hero">
-        <p className="eyebrow">Phase 1 · pre-flight</p>
+        <p className="eyebrow">Pre-flight</p>
         <h1 className="hero-title">
           {greeting()}
           {firstName ? (
@@ -92,7 +95,7 @@ export function FlightDeck() {
         </h1>
         <p className="hero-lede">
           Every agent runs on the engines you pick and stops for your approval before anything
-          leaves this machine. Finish the checklist, then job search unlocks in Phase 2.
+          leaves this machine. Finish the checklist, then search for jobs.
         </p>
       </header>
 
@@ -127,7 +130,12 @@ export function FlightDeck() {
               detail="A model for every agent role"
               to="/models"
             />
-            <CheckItem pending done={false} title="Job portals" detail="Arrives in Phase 2" />
+            <CheckItem
+              done={enabledPortals > 0}
+              title="Job sources"
+              detail={enabledPortals ? `${enabledPortals} portal(s) enabled` : "Enable a portal or import a careers page"}
+              to="/portals"
+            />
           </ul>
         </Panel>
 

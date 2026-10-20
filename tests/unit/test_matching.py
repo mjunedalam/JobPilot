@@ -180,3 +180,17 @@ class TestMatchingAgent:
         assert scam.red_flags == ["high:upfront_fee: asks for a fee or deposit"]
         assert len(results) == 2
         assert session.query(AuditLog).filter_by(action="jobs_scored").one().payload["flagged"] == 1
+
+
+def test_carried_flags_from_retired_rules_are_ignored() -> None:
+    from jobpilot.agents.matching.red_flags import detect_red_flags as detect
+
+    j = job().model_copy(
+        update={
+            "source_flags": (
+                "soft:thin_description: very little detail about the role",  # retired rule
+                "high:upfront_fee: asks for a fee or deposit",
+            )
+        }
+    )
+    assert [f.code for f in detect(j, PROFILE)] == ["upfront_fee"]

@@ -184,3 +184,90 @@ export function useKillSwitch() {
     onSuccess: () => invalidate(keys.health),
   });
 }
+
+// ---- Jobs, search and portals (Phase 2) ----------------------------------------------
+
+export type Job = Schemas["JobOut"];
+export type SearchReport = Schemas["SearchReportOut"];
+export type Portal = Schemas["PortalOut"];
+export type RecencyPreset = Schemas["RecencyPreset"];
+
+export const jobKeys = {
+  jobs: ["jobs"] as const,
+  job: (id: number) => ["jobs", id] as const,
+  portals: ["portals"] as const,
+};
+
+export const useJobs = () =>
+  useQuery({ queryKey: jobKeys.jobs, queryFn: async () => unwrap(await api.GET("/api/v1/jobs")) });
+
+export const useJob = (id: number | null) =>
+  useQuery({
+    queryKey: jobKeys.job(id ?? 0),
+    enabled: id !== null,
+    queryFn: async () =>
+      unwrap(await api.GET("/api/v1/jobs/{job_id}", { params: { path: { job_id: id as number } } })),
+  });
+
+export const usePortals = () =>
+  useQuery({ queryKey: jobKeys.portals, queryFn: async () => unwrap(await api.GET("/api/v1/portals")) });
+
+export function useRunSearch() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (body: Schemas["SearchIn"]) => unwrap(await api.POST("/api/v1/search", { body })),
+    onSuccess: () => invalidate(jobKeys.jobs, jobKeys.portals),
+  });
+}
+
+export function useImportJob() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (url: string) => unwrap(await api.POST("/api/v1/jobs/import", { body: { url } })),
+    onSuccess: () => invalidate(jobKeys.jobs),
+  });
+}
+
+type PortalName = "naukri" | "linkedin" | "shine";
+
+export function useSetPortalEnabled() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ name, enabled, accept_terms }: { name: PortalName; enabled: boolean; accept_terms: boolean }) =>
+      unwrap(await api.PUT("/api/v1/portals/{name}/enabled", {
+        params: { path: { name } },
+        body: { enabled, accept_terms },
+      })),
+    onSuccess: () => invalidate(jobKeys.portals),
+  });
+}
+
+export function useSavePortalCredentials() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ name, username, password }: { name: PortalName; username: string; password: string }) =>
+      unwrap(await api.PUT("/api/v1/portals/{name}/credentials", {
+        params: { path: { name } },
+        body: { username, password },
+      })),
+    onSuccess: () => invalidate(jobKeys.portals),
+  });
+}
+
+export function usePortalLogin() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({ name, method }: { name: PortalName; method: "manual" | "password" }) =>
+      unwrap(await api.POST("/api/v1/portals/{name}/login", { params: { path: { name } }, body: { method } })),
+    onSettled: () => invalidate(jobKeys.portals),
+  });
+}
+
+export function useDisconnectPortal() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (name: PortalName) =>
+      unwrap(await api.DELETE("/api/v1/portals/{name}/session", { params: { path: { name } } })),
+    onSuccess: () => invalidate(jobKeys.portals),
+  });
+}

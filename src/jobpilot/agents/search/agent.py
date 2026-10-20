@@ -27,6 +27,7 @@ from jobpilot.agents.specs import MATCHING, SEARCH
 from jobpilot.core.crypto import Vault
 from jobpilot.core.db import session_scope
 from jobpilot.core.killswitch import KillSwitch
+from jobpilot.core.net import NonPublicURL
 from jobpilot.harness.errors import HarnessError
 from jobpilot.harness.runner import AgentHarness, AgentSpec
 from jobpilot.harness.tools import SideEffect, Tool, ToolRegistry
@@ -82,6 +83,7 @@ def _tool_for(adapter: PortalAdapter, fetcher: PageFetcher) -> Tool:
         fn=run,
         side_effect=SideEffect.READ,
         timeout_s=180,
+        inline=True,  # Playwright's sync API is bound to the thread that created it
         circuit_key=f"portal:{adapter.name}",
     )
 
@@ -165,7 +167,11 @@ class SearchAgent:
         for adapter in adapters:
             with session_scope(self._sessions) as session:
                 state = PortalConnector(session, self._vault).load_session(adapter.name)
-            fetcher = self._fetchers(adapter, state)
+            try:
+                fetcher = self._fetchers(adapter, state)
+            except RuntimeError as exc:  # e.g. Playwright not installed: report, keep going
+                report.errors[adapter.name] = str(exc)[:300]
+                continue
             registry = ToolRegistry([_tool_for(adapter, fetcher)])
             tool = f"portal.search:{adapter.name}"
             harness = self._harness(
@@ -187,8 +193,8 @@ class SearchAgent:
                             self._blocked(adapter, out.blocked, out.page_url, report)
                             break
                         postings.extend(out.postings)
-            except HarnessError as exc:
-                # One portal failing (timeout, circuit open, budget) never stops the others.
+            except (HarnessError, NonPublicURL) as exc:
+                # One source failing (timeout, circuit, budget, unsafe URL) never stops others.
                 report.errors[adapter.name] = str(exc)[:300]
                 log.warning("search on %s failed: %s", adapter.name, exc)
             finally:

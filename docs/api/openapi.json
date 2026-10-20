@@ -881,6 +881,455 @@
           }
         }
       }
+    },
+    "/api/v1/search": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Run Search",
+        "description": "Search the chosen sources within the recency window (checkpoint H2). Runs synchronously;\nwith real portals this takes minutes because pages load at a human pace.",
+        "operationId": "run_search_api_v1_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SearchReportOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs/import": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Import Job",
+        "description": "Add the postings on one URL (a careers page or a single job page), read by the LLM.",
+        "operationId": "import_job_api_v1_jobs_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportJobIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SearchReportOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "operationId": "list_jobs_api_v1_jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/JobStatus",
+              "default": "found"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_JobOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "operationId": "get_job_api_v1_jobs__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portals": {
+      "get": {
+        "tags": [
+          "portals"
+        ],
+        "summary": "List Portals",
+        "operationId": "list_portals_api_v1_portals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_PortalOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/portals/{name}/enabled": {
+      "put": {
+        "tags": [
+          "portals"
+        ],
+        "summary": "Set Enabled",
+        "operationId": "set_enabled_api_v1_portals__name__enabled_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(naukri|linkedin|shine)$",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalEnableIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PortalOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portals/{name}/credentials": {
+      "put": {
+        "tags": [
+          "portals"
+        ],
+        "summary": "Save Credentials",
+        "operationId": "save_credentials_api_v1_portals__name__credentials_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(naukri|linkedin|shine)$",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PortalOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portals/{name}/login": {
+      "post": {
+        "tags": [
+          "portals"
+        ],
+        "summary": "Login",
+        "description": "Manual: opens a visible browser on this machine and waits (up to 10 min) while you sign\nin, including any CAPTCHA or 2FA. Password: fills the saved credentials; stops at any check.",
+        "operationId": "login_api_v1_portals__name__login_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(naukri|linkedin|shine)$",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PortalOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/portals/{name}/session": {
+      "delete": {
+        "tags": [
+          "portals"
+        ],
+        "summary": "Disconnect",
+        "operationId": "disconnect_api_v1_portals__name__session_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(naukri|linkedin|shine)$",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PortalOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1170,6 +1619,28 @@
         ],
         "title": "Certification"
       },
+      "CredentialsIn": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "CredentialsIn"
+      },
       "Education": {
         "properties": {
           "degree": {
@@ -1335,6 +1806,40 @@
         "type": "object",
         "title": "Envelope[ImportResultOut]"
       },
+      "Envelope_JobOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[JobOut]"
+      },
       "Envelope_KillSwitchOut_": {
         "properties": {
           "success": {
@@ -1436,6 +1941,40 @@
         },
         "type": "object",
         "title": "Envelope[ModelListOut]"
+      },
+      "Envelope_PortalOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PortalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[PortalOut]"
       },
       "Envelope_ProviderOut_": {
         "properties": {
@@ -1573,6 +2112,40 @@
         "type": "object",
         "title": "Envelope[RouteOut]"
       },
+      "Envelope_SearchReportOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SearchReportOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[SearchReportOut]"
+      },
       "Envelope_list_AnswerOut__": {
         "properties": {
           "success": {
@@ -1611,6 +2184,44 @@
         "type": "object",
         "title": "Envelope[list[AnswerOut]]"
       },
+      "Envelope_list_JobOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JobOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[JobOut]]"
+      },
       "Envelope_list_MissingFieldOut__": {
         "properties": {
           "success": {
@@ -1648,6 +2259,44 @@
         },
         "type": "object",
         "title": "Envelope[list[MissingFieldOut]]"
+      },
+      "Envelope_list_PortalOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PortalOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[PortalOut]]"
       },
       "Envelope_list_PresetOut__": {
         "properties": {
@@ -1865,6 +2514,21 @@
         ],
         "title": "HealthOut"
       },
+      "ImportJobIn": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 8,
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "ImportJobIn"
+      },
       "ImportResultOut": {
         "properties": {
           "version": {
@@ -1905,6 +2569,181 @@
           "usage"
         ],
         "title": "ImportResultOut"
+      },
+      "JobOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "work_mode": {
+            "type": "string",
+            "title": "Work Mode"
+          },
+          "experience_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience Min"
+          },
+          "experience_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience Max"
+          },
+          "salary_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary Min"
+          },
+          "salary_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Salary Max"
+          },
+          "salary_currency": {
+            "type": "string",
+            "title": "Salary Currency"
+          },
+          "posted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posted At"
+          },
+          "portals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Portals"
+          },
+          "source_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Urls"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skills"
+          },
+          "match_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Score"
+          },
+          "match_reason": {
+            "type": "string",
+            "title": "Match Reason"
+          },
+          "red_flags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Red Flags"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company",
+          "location",
+          "work_mode",
+          "experience_min",
+          "experience_max",
+          "salary_min",
+          "salary_max",
+          "salary_currency",
+          "posted_at",
+          "portals",
+          "source_urls",
+          "skills",
+          "match_score",
+          "match_reason",
+          "red_flags",
+          "status"
+        ],
+        "title": "JobOut"
+      },
+      "JobStatus": {
+        "type": "string",
+        "enum": [
+          "found",
+          "approved",
+          "applying",
+          "applied",
+          "failed",
+          "skipped",
+          "viewed",
+          "shortlisted",
+          "interview",
+          "offer",
+          "rejected"
+        ],
+        "title": "JobStatus"
       },
       "KillSwitchOut": {
         "properties": {
@@ -1991,6 +2830,18 @@
         },
         "type": "object",
         "title": "Links"
+      },
+      "LoginIn": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "pattern": "^(manual|password)$",
+            "title": "Method",
+            "default": "manual"
+          }
+        },
+        "type": "object",
+        "title": "LoginIn"
       },
       "Meta": {
         "properties": {
@@ -2089,10 +2940,13 @@
         "properties": {
           "amount": {
             "type": "number",
+            "exclusiveMinimum": 0.0,
             "title": "Amount"
           },
           "currency": {
             "type": "string",
+            "maxLength": 3,
+            "minLength": 3,
             "title": "Currency",
             "default": "INR"
           },
@@ -2107,6 +2961,106 @@
           "amount"
         ],
         "title": "Money"
+      },
+      "PortalEnableIn": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "accept_terms": {
+            "type": "boolean",
+            "title": "Accept Terms",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "PortalEnableIn"
+      },
+      "PortalOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "tos_note": {
+            "type": "string",
+            "title": "Tos Note"
+          },
+          "auth_methods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Auth Methods"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "status_reason": {
+            "type": "string",
+            "title": "Status Reason"
+          },
+          "has_session": {
+            "type": "boolean",
+            "title": "Has Session"
+          },
+          "has_credentials": {
+            "type": "boolean",
+            "title": "Has Credentials"
+          },
+          "last_login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login"
+          },
+          "session_expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "enabled",
+          "tos_note",
+          "auth_methods",
+          "status",
+          "status_reason",
+          "has_session",
+          "has_credentials",
+          "last_login",
+          "session_expires_at"
+        ],
+        "title": "PortalOut"
       },
       "PresetOut": {
         "properties": {
@@ -2461,6 +3415,54 @@
         ],
         "title": "ProviderTestOut"
       },
+      "RecencyIn": {
+        "properties": {
+          "preset": {
+            "$ref": "#/components/schemas/RecencyPreset",
+            "description": "Checkpoint H2: 1h, 24h, 7d, 30d or custom"
+          },
+          "since": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preset"
+        ],
+        "title": "RecencyIn"
+      },
+      "RecencyPreset": {
+        "type": "string",
+        "enum": [
+          "1h",
+          "24h",
+          "7d",
+          "30d",
+          "custom"
+        ],
+        "title": "RecencyPreset"
+      },
       "RoleTrialOut": {
         "properties": {
           "ok": {
@@ -2573,6 +3575,111 @@
           "source"
         ],
         "title": "RouteOut"
+      },
+      "SearchIn": {
+        "properties": {
+          "recency": {
+            "$ref": "#/components/schemas/RecencyIn"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Sources",
+            "description": "Enabled portal names and/or careers-page URLs"
+          },
+          "include_undated": {
+            "type": "boolean",
+            "title": "Include Undated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "recency",
+          "sources"
+        ],
+        "title": "SearchIn"
+      },
+      "SearchReportOut": {
+        "properties": {
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Until"
+          },
+          "queries": {
+            "type": "integer",
+            "title": "Queries"
+          },
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched"
+          },
+          "unique": {
+            "type": "integer",
+            "title": "Unique"
+          },
+          "new_jobs": {
+            "type": "integer",
+            "title": "New Jobs"
+          },
+          "updated_jobs": {
+            "type": "integer",
+            "title": "Updated Jobs"
+          },
+          "skipped": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Skipped"
+          },
+          "blocked": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Blocked"
+          },
+          "errors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Errors"
+          },
+          "job_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Job Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "since",
+          "until",
+          "queries",
+          "fetched",
+          "unique",
+          "new_jobs",
+          "updated_jobs",
+          "skipped",
+          "blocked",
+          "errors",
+          "job_ids"
+        ],
+        "title": "SearchReportOut"
       },
       "Skill": {
         "properties": {

@@ -229,7 +229,8 @@ class AgentHarness:
         except Exception as exc:
             self._circuit_failure(tool)
             log.exception("tool %s failed", tool.name)
-            raise ToolFailed(f"{tool.name} failed: {type(exc).__name__}") from exc
+            detail = str(exc).splitlines()[0][:200] if str(exc) else ""
+            raise ToolFailed(f"{tool.name} failed: {type(exc).__name__}: {detail}") from exc
         if tool.circuit_key:
             self._circuit.success(tool.circuit_key)
         try:
@@ -240,6 +241,8 @@ class AgentHarness:
             raise ToolOutputInvalid(f"{tool.name} returned an invalid result") from exc
 
     def _with_timeout(self, tool: Tool, parsed: BaseModel) -> BaseModel:
+        if tool.inline:
+            return tool.fn(parsed)
         pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"tool-{tool.name}")
         future = pool.submit(tool.fn, parsed)
         try:

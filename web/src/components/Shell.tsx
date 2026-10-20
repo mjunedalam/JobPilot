@@ -6,6 +6,7 @@ import {
   ListChecks,
   Menu,
   Moon,
+  Plug,
   Monitor,
   Search,
   ShieldAlert,
@@ -26,7 +27,13 @@ interface NavItem {
 }
 
 const SECTIONS: { title: string; items: NavItem[] }[] = [
-  { title: "Cockpit", items: [{ to: "/", label: "Flight deck", icon: <Gauge size={17} /> }] },
+  {
+    title: "Cockpit",
+    items: [
+      { to: "/", label: "Flight deck", icon: <Gauge size={17} /> },
+      { to: "/jobs", label: "Jobs", icon: <Search size={17} /> },
+    ],
+  },
   {
     title: "Pilot",
     items: [
@@ -34,13 +41,18 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: "/answers", label: "Answer bank", icon: <BookOpenText size={17} /> },
     ],
   },
-  { title: "Engines", items: [{ to: "/models", label: "Models", icon: <Cpu size={17} /> }] },
+  {
+    title: "Engines",
+    items: [
+      { to: "/models", label: "Models", icon: <Cpu size={17} /> },
+      { to: "/portals", label: "Portals", icon: <Plug size={17} /> },
+    ],
+  },
   { title: "Ops", items: [{ to: "/system", label: "System", icon: <ShieldAlert size={17} /> }] },
 ];
 
 // Shown, not linked: these arrive with later build phases.
 const UPCOMING = [
-  { label: "Job search", phase: 2, icon: <Search size={17} /> },
   { label: "Approvals", phase: 3, icon: <ListChecks size={17} /> },
   { label: "Inbox", phase: 4, icon: <Inbox size={17} /> },
   { label: "Reports", phase: 5, icon: <BarChart3 size={17} /> },

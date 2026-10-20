@@ -340,6 +340,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Search
+         * @description Search the chosen sources within the recency window (checkpoint H2). Runs synchronously;
+         *     with real portals this takes minutes because pages load at a human pace.
+         */
+        post: operations["run_search_api_v1_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Job
+         * @description Add the postings on one URL (a careers page or a single job page), read by the LLM.
+         */
+        post: operations["import_job_api_v1_jobs_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Jobs */
+        get: operations["list_jobs_api_v1_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Job */
+        get: operations["get_job_api_v1_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Portals */
+        get: operations["list_portals_api_v1_portals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portals/{name}/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Enabled */
+        put: operations["set_enabled_api_v1_portals__name__enabled_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portals/{name}/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Credentials */
+        put: operations["save_credentials_api_v1_portals__name__credentials_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portals/{name}/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login
+         * @description Manual: opens a visible browser on this machine and waits (up to 10 min) while you sign
+         *     in, including any CAPTCHA or 2FA. Password: fills the saved credentials; stops at any check.
+         */
+        post: operations["login_api_v1_portals__name__login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portals/{name}/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Disconnect */
+        delete: operations["disconnect_api_v1_portals__name__session_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -458,6 +622,13 @@ export interface components {
             /** Year */
             year?: number | null;
         };
+        /** CredentialsIn */
+        CredentialsIn: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
         /** Education */
         Education: {
             /** Degree */
@@ -514,6 +685,17 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[JobOut] */
+        Envelope_JobOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["JobOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[KillSwitchOut] */
         Envelope_KillSwitchOut_: {
             /**
@@ -544,6 +726,17 @@ export interface components {
              */
             success: boolean;
             data?: components["schemas"]["ModelListOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[PortalOut] */
+        Envelope_PortalOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["PortalOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -591,6 +784,17 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[SearchReportOut] */
+        Envelope_SearchReportOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["SearchReportOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[list[AnswerOut]] */
         Envelope_list_AnswerOut__: {
             /**
@@ -603,6 +807,18 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[list[JobOut]] */
+        Envelope_list_JobOut__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: components["schemas"]["JobOut"][] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[list[MissingFieldOut]] */
         Envelope_list_MissingFieldOut__: {
             /**
@@ -612,6 +828,18 @@ export interface components {
             success: boolean;
             /** Data */
             data?: components["schemas"]["MissingFieldOut"][] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[list[PortalOut]] */
+        Envelope_list_PortalOut__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: components["schemas"]["PortalOut"][] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -688,6 +916,11 @@ export interface components {
             /** Tracing */
             tracing: string;
         };
+        /** ImportJobIn */
+        ImportJobIn: {
+            /** Url */
+            url: string;
+        };
         /** ImportResultOut */
         ImportResultOut: {
             /** Version */
@@ -701,6 +934,55 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** JobOut */
+        JobOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Company */
+            company: string;
+            /** Location */
+            location: string;
+            /** Work Mode */
+            work_mode: string;
+            /** Experience Min */
+            experience_min: number | null;
+            /** Experience Max */
+            experience_max: number | null;
+            /** Salary Min */
+            salary_min: number | null;
+            /** Salary Max */
+            salary_max: number | null;
+            /** Salary Currency */
+            salary_currency: string;
+            /** Posted At */
+            posted_at: string | null;
+            /** Portals */
+            portals: string[];
+            /** Source Urls */
+            source_urls: string[];
+            /** Skills */
+            skills: string[];
+            /** Match Score */
+            match_score: number | null;
+            /** Match Reason */
+            match_reason: string;
+            /** Red Flags */
+            red_flags: string[];
+            /** Status */
+            status: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+        };
+        /**
+         * JobStatus
+         * @enum {string}
+         */
+        JobStatus: "found" | "approved" | "applying" | "applied" | "failed" | "skipped" | "viewed" | "shortlisted" | "interview" | "offer" | "rejected";
         /** KillSwitchOut */
         KillSwitchOut: {
             /** Engaged */
@@ -726,6 +1008,14 @@ export interface components {
             portfolio?: string | null;
             /** Other */
             other?: string[];
+        };
+        /** LoginIn */
+        LoginIn: {
+            /**
+             * Method
+             * @default manual
+             */
+            method: string;
         };
         /** Meta */
         Meta: {
@@ -778,6 +1068,41 @@ export interface components {
              * @default year
              */
             period: string;
+        };
+        /** PortalEnableIn */
+        PortalEnableIn: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Accept Terms
+             * @default false
+             */
+            accept_terms: boolean;
+        };
+        /** PortalOut */
+        PortalOut: {
+            /** Name */
+            name: string;
+            /** Label */
+            label: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Tos Note */
+            tos_note: string;
+            /** Auth Methods */
+            auth_methods: string[];
+            /** Status */
+            status: string;
+            /** Status Reason */
+            status_reason: string;
+            /** Has Session */
+            has_session: boolean;
+            /** Has Credentials */
+            has_credentials: boolean;
+            /** Last Login */
+            last_login: string | null;
+            /** Session Expires At */
+            session_expires_at: string | null;
         };
         /** PresetOut */
         PresetOut: {
@@ -933,6 +1258,20 @@ export interface components {
              */
             error: string;
         };
+        /** RecencyIn */
+        RecencyIn: {
+            /** @description Checkpoint H2: 1h, 24h, 7d, 30d or custom */
+            preset: components["schemas"]["RecencyPreset"];
+            /** Since */
+            since?: string | null;
+            /** Until */
+            until?: string | null;
+        };
+        /**
+         * RecencyPreset
+         * @enum {string}
+         */
+        RecencyPreset: "1h" | "24h" | "7d" | "30d" | "custom";
         /** RoleTrialOut */
         RoleTrialOut: {
             /** Ok */
@@ -990,6 +1329,57 @@ export interface components {
             fallbacks: components["schemas"]["ModelTarget"][];
             /** Source */
             source: string;
+        };
+        /** SearchIn */
+        SearchIn: {
+            recency: components["schemas"]["RecencyIn"];
+            /**
+             * Sources
+             * @description Enabled portal names and/or careers-page URLs
+             */
+            sources: string[];
+            /**
+             * Include Undated
+             * @default false
+             */
+            include_undated: boolean;
+        };
+        /** SearchReportOut */
+        SearchReportOut: {
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+            /**
+             * Until
+             * Format: date-time
+             */
+            until: string;
+            /** Queries */
+            queries: number;
+            /** Fetched */
+            fetched: number;
+            /** Unique */
+            unique: number;
+            /** New Jobs */
+            new_jobs: number;
+            /** Updated Jobs */
+            updated_jobs: number;
+            /** Skipped */
+            skipped: {
+                [key: string]: number;
+            };
+            /** Blocked */
+            blocked: {
+                [key: string]: string;
+            };
+            /** Errors */
+            errors: {
+                [key: string]: string;
+            };
+            /** Job Ids */
+            job_ids: number[];
         };
         /** Skill */
         Skill: {
@@ -1643,6 +2033,291 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_RoleTrialOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_search_api_v1_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_SearchReportOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_job_api_v1_jobs_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportJobIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_SearchReportOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_jobs_api_v1_jobs_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["JobStatus"];
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_JobOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_api_v1_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_JobOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portals_api_v1_portals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_PortalOut__"];
+                };
+            };
+        };
+    };
+    set_enabled_api_v1_portals__name__enabled_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalEnableIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PortalOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_credentials_api_v1_portals__name__credentials_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CredentialsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PortalOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_api_v1_portals__name__login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PortalOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_api_v1_portals__name__session_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PortalOut_"];
                 };
             };
             /** @description Validation Error */

@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, ValidationError
 from jobpilot.agents.search.query import SearchQuery
 from jobpilot.agents.search.schema import RawPosting
 from jobpilot.core.config import ModelRole
+from jobpilot.core.net import check_public_http_url
 from jobpilot.harness.guardrails import fence_untrusted
 from jobpilot.llm.base import SupportsStructured
 from jobpilot.portals.base import AuthMethod, BlockKind, FetchedPage, detect_common_block
@@ -56,9 +57,8 @@ class GenericAdapter:
     tos_note = "Check the site's terms before enabling automated access."
 
     def __init__(self, url: str, llm: SupportsStructured) -> None:
+        check_public_http_url(url)  # NonPublicURL is a ValueError
         parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            raise ValueError("enter a full http(s) URL")
         self.name = f"web:{parsed.netloc.removeprefix('www.')}"
         self.home_url = url
         self.login_url = url

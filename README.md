@@ -112,6 +112,24 @@ Optional extras: `uv sync --extra postgres --extra embeddings --extra eval --ext
 Full stack with Postgres: `docker compose up -d`. Inside Compose, point the `local` provider's
 `base_url` at `http://ollama:11434/v1`.
 
+## Finding jobs (Phase 2)
+
+1. **Portals** page: enable Naukri, LinkedIn or Shine (each shows its terms note and needs your
+   explicit acceptance), then sign in. A browser opens; complete any CAPTCHA or code yourself.
+2. **Jobs** page: choose how recent (1h / 24h / 7d / 30d / custom), pick sources, optionally add any
+   careers page URL, and search. Listings are normalised, deduplicated across portals, filtered
+   (excluded companies, expired, outside the window) and ranked 0–100 with a reason and red flags.
+3. Or paste one URL under **Add one page**: the extraction model reads it, and only links that
+   really exist on the page are kept.
+
+If a portal shows a CAPTCHA, a code prompt or an "unusual activity" page, that portal stops and is
+marked for your attention (checkpoint H1); other sources continue. Known-portal parsers are tested
+against saved pages, but their selectors are not verified against the live sites.
+
+Screening answers for applications (Phase 3) will come from **Agentic RAG** over your profile,
+resume and Answer Bank: it grades what it retrieves, rewrites queries, verifies every claim, and
+abstains (so you are asked) instead of guessing. Check it with `uv run jobpilot eval rag`.
+
 ## CLI (Phase 1)
 
 | Command | Purpose |
@@ -175,7 +193,7 @@ web/                React + TypeScript UI (pages, typed API client, tests)
 |-------|-------|--------|
 | 1 | Core state, storage, vault, audit, LLM gateway, agent harness, tracing, Profile agent, REST API | **Done** |
 | 1.5 | Open-source default models, runtime provider/model picker, web UI | **Done** (198 backend tests, 95% coverage; 9 UI tests; browser E2E on local models) |
-| 2 | Agentic RAG + TruLens evals, portal connector + auth, job search, dedup, matching | Next |
+| 2 | Agentic RAG + TruLens evals, portal connectors + auth, job search, dedup, matching, Jobs and Portals pages | **Done** (see below) |
 | 3 | LangGraph supervisor, HITL interrupts H1–H5, Application agent | Planned |
 | 4 | Email monitor + reply drafting (H6, H7) | Planned |
 | 5 | Analytics & reporting | Planned |

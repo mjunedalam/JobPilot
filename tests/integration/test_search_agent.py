@@ -77,7 +77,6 @@ def setup(sessions, kill_switch):  # noqa: ANN001, ANN201
     agent = SearchAgent(
         sessions=sessions,
         kill_switch=kill_switch,
-        # Search cards carry short descriptions (soft "thin" flag), so each gets a review.
         llm=FakeLLM(*[RedFlagReview(suspicious=False)] * 20),
         vault=vault,
         fetcher_factory=factory,
@@ -134,3 +133,22 @@ def test_kill_switch_stops_search(setup, kill_switch) -> None:
     with pytest.raises(KillSwitchEngaged):
         agent.run([NaukriAdapter()], Recency(preset=RecencyPreset.LAST_WEEK))
     assert fetchers["naukri"].urls == []  # nothing was fetched
+
+
+def test_missing_browser_is_reported_per_source(sessions, kill_switch) -> None:
+    with session_scope(sessions) as s:
+        ProfileRepository(s).save(CandidateProfile(target_roles=["Backend Engineer"]), source="qa")
+
+    def no_browser(adapter, state):  # noqa: ANN001, ANN202
+        raise RuntimeError("Playwright is not installed: uv sync --extra browser")
+
+    agent = SearchAgent(
+        sessions=sessions,
+        kill_switch=kill_switch,
+        llm=FakeLLM(),
+        vault=None,
+        fetcher_factory=no_browser,
+        clock=lambda: NOW,
+    )
+    report = agent.run([NaukriAdapter()], Recency(preset=RecencyPreset.LAST_WEEK))
+    assert "Playwright is not installed" in report.errors["naukri"] and report.fetched == 0

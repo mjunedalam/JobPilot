@@ -10,8 +10,10 @@ import contextlib
 import random
 import time
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
+from urllib.parse import urlparse
 
+from jobpilot.core.net import NonPublicURL, check_public_http_url
 from jobpilot.portals.base import FetchedPage
 
 NAV_TIMEOUT_MS = 45_000
@@ -48,7 +50,11 @@ class PlaywrightFetcher:
             raise RuntimeError("Playwright is not installed: uv sync --extra browser") from exc
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(channel=channel, headless=not headed)
-        self._context = self._browser.new_context(storage_state=storage_state)
+        self._context = self._browser.new_context(storage_state=cast(Any, storage_state))
+        # Every request (navigations, redirects, images, XHR) must go to a public host, so a
+        # page cannot steer the browser into the local network or a metadata service.
+        self._context.route("**/*", self._guard_request)
+        self._public_hosts: dict[str, bool] = {}
         self._page = self._context.new_page()
         self._min, self._max = min_delay_s, max_delay_s
         self._last_nav: float | None = None
@@ -61,10 +67,30 @@ class PlaywrightFetcher:
                 time.sleep(wait)
         self._last_nav = time.monotonic()
 
+    def _is_public(self, url: str) -> bool:
+        host = urlparse(url).hostname or ""
+        if host not in self._public_hosts:
+            try:
+                check_public_http_url(url)
+                self._public_hosts[host] = True
+            except NonPublicURL:
+                self._public_hosts[host] = False
+        return self._public_hosts[host]
+
+    def _guard_request(self, route: Any) -> None:
+        url = route.request.url
+        if url.startswith(("data:", "blob:", "about:")) or self._is_public(url):
+            route.continue_()
+        else:
+            route.abort("blockedbyclient")
+
     def fetch(self, url: str) -> FetchedPage:
+        check_public_http_url(url)
         self._pace()
         response = self._page.goto(url, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
         self._status = response.status if response is not None else 0
+        if not self._is_public(self._page.url):
+            raise NonPublicURL(f"navigation ended on a non-public address: {self._page.url}")
         # Busy pages never go idle; the DOM is already loaded, so a timeout here is fine.
         with contextlib.suppress(Exception):
             self._page.wait_for_load_state("networkidle", timeout=SETTLE_MS)

@@ -2,6 +2,7 @@
 
 .page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* children can never force the page wider */
   gap: var(--space-6);
 }
 
@@ -647,5 +648,347 @@ a.check-link:hover .check-go {
 
   .sheet {
     padding: var(--space-4);
+  }
+}
+
+/* ---------- Jobs ---------- */
+
+.jobs-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.custom-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.source-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+
+.source-chip.on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.source-chip button {
+  display: inline-grid;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.source-warn {
+  color: var(--amber);
+  font-size: 1.2em;
+  line-height: 0;
+}
+
+.url-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.search-actions {
+  align-items: center;
+}
+
+.report {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--rule-strong);
+  animation: rise var(--duration-normal) var(--ease-out);
+}
+
+.report-flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-5);
+}
+
+.report-flow li {
+  display: grid;
+  position: relative;
+}
+
+.report-flow li + li::before {
+  content: "→";
+  position: absolute;
+  left: calc(-1 * var(--space-4));
+  top: 0.35em;
+  color: var(--ink-3);
+}
+
+.report-num {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.report-skips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.callout {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.callout-amber {
+  background: var(--amber-soft);
+}
+
+.callout-stop {
+  background: var(--stop-soft);
+  color: var(--stop);
+}
+
+.job-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.job {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--duration-fast), transform var(--duration-normal) var(--ease-out);
+}
+
+.job:hover {
+  border-color: var(--rule-strong);
+  transform: translateY(-1px);
+}
+
+.job-flagged {
+  border-left: 4px solid var(--stop);
+}
+
+.job-rank {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.dial {
+  --size: 64px;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(closest-side, var(--card) 76%, transparent 78%),
+    conic-gradient(var(--dial) calc(var(--score) * 1%), var(--paper-2) 0);
+}
+
+.dial-strong { --dial: var(--go); }
+.dial-fair { --dial: var(--amber); }
+.dial-weak { --dial: var(--ink-3); }
+
+.dial-num {
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+.job-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.job-title {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  line-height: 1.05;
+  padding-right: var(--space-6);
+}
+
+.job-company {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.job-facts {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.job-reason {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+}
+
+.job-flags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.job-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: 4px;
+}
+
+.job-more {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.job-more .rot {
+  transform: rotate(180deg);
+}
+
+.job-detail {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px dotted var(--rule);
+}
+
+.job-desc {
+  white-space: pre-wrap;
+  font-size: var(--text-sm);
+  max-height: 320px;
+  overflow: auto;
+}
+
+/* ---------- Portals ---------- */
+
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: var(--space-4);
+}
+
+.portal {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding: var(--space-5);
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+}
+
+.portal-on {
+  border-color: var(--rule-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.portal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.portal-name {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.portal-tos {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--amber);
+}
+
+.portal-enable {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.portal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.creds-form {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dotted var(--rule);
+}
+
+@media (max-width: 1100px) {
+  .jobs-top {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .job {
+    grid-template-columns: 1fr;
+    padding: var(--space-4);
+  }
+
+  .dial {
+    --size: 52px;
+  }
+
+  .custom-range {
+    grid-template-columns: 1fr;
+  }
+
+  .report-flow {
+    gap: var(--space-4);
+    flex-wrap: wrap;
   }
 }

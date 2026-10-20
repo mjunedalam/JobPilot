@@ -67,6 +67,22 @@ class TestParsing:
     def test_posted(self, text: str, delta: timedelta) -> None:
         assert parse_posted(text, NOW) == NOW - delta
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Posted: 18 October 2026",
+            "2026-10-18",
+            "Oct 18, 2026",
+            "18 Oct 2026",
+            "18/10/2026",
+        ],
+    )
+    def test_posted_absolute_dates(self, text: str) -> None:
+        assert parse_posted(text, NOW) == datetime(2026, 10, 18, tzinfo=UTC)
+
+    def test_future_absolute_date_rejected(self) -> None:
+        assert parse_posted("Posted 25 December 2026", NOW) is None
+
     def test_posted_unknown_is_none(self) -> None:
         assert parse_posted("Hot job!", NOW) is None and parse_posted("", NOW) is None
 
@@ -153,6 +169,19 @@ class TestAdapters:
 
     def test_normal_page_is_not_a_block(self) -> None:
         assert detect_common_block(page("naukri.html")) is None
+
+
+@pytest.fixture(autouse=True)
+def _public_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    import socket
+
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda host, port, *a, **k: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.215.14", port))
+        ],
+    )
 
 
 class TestGeneric:

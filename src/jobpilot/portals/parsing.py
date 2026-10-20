@@ -31,11 +31,34 @@ def parse_posted(text: str, fetched_at: datetime) -> datetime | None:
         return fetched_at - timedelta(days=1)
     m = _RELATIVE.search(t)
     if not m:
-        return None
+        return _absolute_date(text, fetched_at)
     amount, unit = int(m.group(1)), _UNITS[m.group(2).casefold()]
     if m.group(2).casefold() in ("month", "mo"):
         amount *= 30
     return fetched_at - timedelta(**{unit: amount})
+
+
+_ABSOLUTE_FORMATS = ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%B %d %Y", "%b %d %Y", "%d/%m/%Y")
+_DATE_IN_TEXT = re.compile(
+    r"\d{4}-\d{2}-\d{2}|\d{1,2} [A-Za-z]{3,9},? \d{4}|[A-Za-z]{3,9} \d{1,2},? \d{4}"
+    r"|\d{1,2}/\d{1,2}/\d{4}"
+)
+
+
+def _absolute_date(text: str, fetched_at: datetime) -> datetime | None:
+    """ "Posted: 18 October 2026", "2026-10-18", "Oct 18, 2026", "18/10/2026" (day first, as on
+    Indian portals). A date after the fetch time is a misread and is rejected."""
+    match = _DATE_IN_TEXT.search(text)
+    if not match:
+        return None
+    candidate = match.group(0).replace(",", "")
+    for fmt in _ABSOLUTE_FORMATS:
+        try:
+            parsed = datetime.strptime(candidate, fmt).replace(tzinfo=fetched_at.tzinfo)
+        except ValueError:
+            continue
+        return parsed if parsed <= fetched_at else None
+    return None
 
 
 _EXP = re.compile(r"(\d+(?:\.\d+)?)\s*(?:-|to|–)\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*\+")
