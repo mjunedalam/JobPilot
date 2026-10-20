@@ -1,0 +1,33 @@
+{
+  "description": "Screening questions answered from a fixed candidate profile. `expect_abstain` cases have no supporting fact and must not be answered.",
+  "profile": {
+    "full_name": "Asha Rao",
+    "current_role": "Senior Backend Engineer",
+    "current_company": "Acme Payments",
+    "total_experience_years": 9,
+    "notice_period_days": 60,
+    "expected_ctc": {"amount": 3000000, "currency": "INR"},
+    "current_ctc": {"amount": 2400000, "currency": "INR"},
+    "preferred_locations": ["Pune", "Bengaluru"],
+    "work_modes": ["remote", "hybrid"],
+    "work_authorization": "Indian citizen",
+    "skills": [{"name": "Python", "years": 7}, {"name": "Kafka", "years": 4}, {"name": "AWS"}],
+    "education": [{"degree": "B.Tech Computer Science", "institution": "VIT", "year": 2017}]
+  },
+  "answers": [
+    {"question": "Why are you looking for a change?", "answer": "I want to work on larger-scale distributed systems and grow into a staff role."},
+    {"question": "Are you willing to relocate?", "answer": "Yes, to Pune or Bengaluru."}
+  ],
+  "cases": [
+    {"question": "What is your notice period?", "must_contain": ["60"]},
+    {"question": "How many years of total experience do you have?", "must_contain": ["9"]},
+    {"question": "How many years have you worked with Kafka?", "must_contain": ["4"]},
+    {"question": "What is your expected CTC?", "must_contain": ["3,000,000", "30"], "any": true},
+    {"question": "Why do you want to leave your current job?", "must_contain": ["distributed"]},
+    {"question": "Would you relocate for this role?", "must_contain": ["Pune"]},
+    {"question": "Which university did you graduate from?", "must_contain": ["VIT"]},
+    {"question": "Do you hold a valid PMP certification?", "expect_abstain": true},
+    {"question": "Have you worked with Kubernetes in production?", "expect_abstain": true},
+    {"question": "What is your current manager's name?", "expect_abstain": true}
+  ]
+}

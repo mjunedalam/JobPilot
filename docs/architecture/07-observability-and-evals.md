@@ -32,6 +32,6 @@ flowchart TD
 | Matching | Agreement with labelled golden set (deterministic, pytest) | ≥ 0.85 |
 | Email classification | Accuracy on labelled golden set | ≥ 0.9 |
 
-TruLens runs offline (`jobpilot eval rag`) against golden datasets in `evals/datasets/`, and online on a
+TruLens runs offline (`jobpilot eval rag`, dataset `evals/datasets/rag_screening.json`, JSON report, exit code 1 on a failed gate) against golden datasets in `evals/datasets/`, and online on a
 sampled fraction of production RAG calls. The judge model is the `judge` role, so it can be Claude or a
 local model. Scores are also pushed to Langfuse as trace scores, so regressions show up next to the trace.

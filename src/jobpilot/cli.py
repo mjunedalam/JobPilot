@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import time
 from pathlib import Path
 
 import typer
@@ -31,6 +32,8 @@ app.add_typer(profile_app, name="profile")
 app.add_typer(answers_app, name="answers")
 api_app = typer.Typer(help="REST API", no_args_is_help=True)
 app.add_typer(api_app, name="api")
+eval_app = typer.Typer(help="Evaluation suites", no_args_is_help=True)
+app.add_typer(eval_app, name="eval")
 console = Console()
 
 
@@ -212,6 +215,52 @@ def answers_list() -> None:
                 str(e.times_used),
             )
         console.print(table)
+
+
+@eval_app.command("rag")
+def eval_rag(
+    dataset: Path = typer.Option(Path("evals/datasets/rag_screening.json"), exists=True),
+    judge: bool = typer.Option(True, help="Score with TruLens using the `judge` model role"),
+    out: Path = typer.Option(None, help="Write the JSON report here (default: data/evals/)"),
+) -> None:
+    """Run screening questions through Agentic RAG; exit 1 if any gate fails."""
+    from jobpilot.evals.rag_eval import TruLensJudge, judge_engine, run_rag_eval
+    from jobpilot.llm.settings import LLMSettingsStore
+
+    ctx = _ctx()
+    _guard(ctx)
+    upgrade_to_head(ctx.engine)
+    trulens = None
+    if judge:
+        with session_scope(ctx.sessions) as session:
+            llm_cfg, keys = LLMSettingsStore(
+                session, ctx.config.llm, ctx.optional_vault
+            ).effective()
+        engine_id, kwargs = judge_engine(llm_cfg, keys)
+        trulens = TruLensJudge(engine_id, **kwargs)
+    console.print(f"Running {dataset} (judge: {trulens.name if trulens else 'off'})…")
+    report = run_rag_eval(dataset, ctx.config, ctx.gateway, trulens)
+
+    table = Table("question", "abstain ok", "answer", "correct", "grounded", "s")
+    for c in report.cases:
+        table.add_row(
+            c.question,
+            "yes" if c.abstain_correct else "[red]NO[/]",
+            (c.answer or "—")[:60],
+            {True: "yes", False: "[red]no[/]", None: "—"}[c.content_correct],
+            "—" if c.groundedness is None else f"{c.groundedness:.2f}",
+            str(c.seconds),
+        )
+    console.print(table)
+    console.print(report.summary)
+    for gate, ok in report.gates.items():
+        console.print(f"{'[green]PASS' if ok else '[red]FAIL'}[/] {gate}")
+    target = out or ctx.settings.data_dir / "evals" / f"rag-{int(time.time())}.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(report.to_json())
+    console.print(f"Report: {target}")
+    if not report.passed:
+        raise typer.Exit(1)
 
 
 @api_app.command("serve")
