@@ -11,7 +11,7 @@ from jobpilot.core.crypto import Vault
 from jobpilot.core.db import session_scope
 from jobpilot.core.models import AuditLog, LLMProviderRow
 from jobpilot.llm.base import StructuredResult, Usage
-from jobpilot.llm.settings import LLMSettingsStore, RuntimeGateway, SettingsError
+from jobpilot.llm.settings import LLMSettingsStore, PrivacyState, RuntimeGateway, SettingsError
 
 
 def _base() -> AppConfig:
@@ -130,6 +130,23 @@ class TestProviders:
         with pytest.raises(SettingsError, match=message):
             store.upsert_provider(name, **kwargs)
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://169.254.169.254/latest/meta-data",
+            "http://metadata.google.internal/v1",
+            "http://[fe80::1]/v1",
+            "http://0.0.0.0:8080/v1",
+        ],
+    )
+    def test_metadata_and_link_local_endpoints_rejected(self, store, url: str) -> None:
+        with pytest.raises(SettingsError, match="metadata"):
+            store.upsert_provider("x", type="openai_compatible", base_url=url)
+
+    def test_litellm_base_url_must_be_http(self, store) -> None:
+        with pytest.raises(SettingsError, match="http"):
+            store.upsert_provider("lt", type="litellm", base_url="file:///etc/passwd")
+
     def test_delete_refuses_provider_in_use(self, store) -> None:
         store.upsert_provider("lan", type="openai_compatible", base_url="http://10.0.0.9:8000/v1")
         store.set_route(ModelRole.FAST, "lan", "llama3")
@@ -179,6 +196,30 @@ class TestRoutes:
         store.set_privacy_mode(PrivacyMode.LOCAL_ONLY)
         assert store.revision() == start + 2
         assert store.privacy_mode() is PrivacyMode.LOCAL_ONLY
+
+
+class TestPrivacyState:
+    def test_reflects_runtime_change_after_invalidate(self, sessions, vault) -> None:
+        state = PrivacyState(sessions, _base().llm, ttl_s=60)
+        assert state.local_only() is False
+        with session_scope(sessions) as s:
+            LLMSettingsStore(s, _base().llm, vault).set_privacy_mode(PrivacyMode.LOCAL_ONLY)
+        state.invalidate()
+        assert state.local_only() is True
+
+    def test_picks_up_change_after_ttl_without_invalidate(self, sessions, vault) -> None:
+        state = PrivacyState(sessions, _base().llm, ttl_s=0)
+        assert state.local_only() is False
+        with session_scope(sessions) as s:
+            LLMSettingsStore(s, _base().llm, vault).set_privacy_mode(PrivacyMode.LOCAL_ONLY)
+        assert state.local_only() is True
+
+    def test_fails_closed_when_setting_unreadable(self) -> None:
+        def broken():  # noqa: ANN202
+            raise RuntimeError("db down")
+
+        state = PrivacyState(broken, _base().llm)  # type: ignore[arg-type]
+        assert state.local_only() is True
 
 
 class _Reply(BaseModel):

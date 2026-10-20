@@ -86,8 +86,10 @@ def set_privacy(
     store = _store(ctx, session)
     try:
         store.set_privacy_mode(body.privacy_mode)
+        session.commit()  # visible to the tracer's privacy check before we return
     except SettingsError as exc:
         _bad_request(session, exc)
+    ctx.privacy.invalidate()
     return ok(
         LLMSettingsOut(
             privacy_mode=store.privacy_mode(),

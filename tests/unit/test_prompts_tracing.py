@@ -71,35 +71,59 @@ def test_trusted_hosts_allowlist() -> None:
     assert is_local_endpoint("http://other:3000", trusted_hosts=["langfuse"]) is False
 
 
-@pytest.mark.parametrize(
-    ("local_only", "url", "expected_mask"),
-    [
-        (False, "https://cloud.langfuse.com", "_mask"),
-        (True, "https://cloud.langfuse.com", "_omit"),
-        (True, "http://localhost:3000", "_mask"),
-    ],
-)
-def test_local_only_never_exports_content_to_remote_langfuse(
-    monkeypatch: pytest.MonkeyPatch, local_only: bool, url: str, expected_mask: str
-) -> None:
+def _capture_mask(monkeypatch: pytest.MonkeyPatch, **kwargs):  # noqa: ANN003, ANN202
     captured: dict = {}
 
     class FakeLangfuse:
-        def __init__(self, **kwargs) -> None:
-            captured.update(kwargs)
+        def __init__(self, **kw) -> None:  # noqa: ANN003
+            captured.update(kw)
 
     monkeypatch.setattr("langfuse.Langfuse", FakeLangfuse)
     tracer = build_tracer(
         enabled=True,
         public_key="pk",
         secret_key="sk",
-        base_url=url,
         environment="test",
         sample_rate=1.0,
-        local_only=local_only,
+        **kwargs,
     )
     assert isinstance(tracer, tracing.LangfuseTracer)
-    assert captured["mask"].__name__ == expected_mask
+    return captured["mask"]
+
+
+@pytest.mark.parametrize(
+    ("local_only", "url", "content_exported"),
+    [
+        (False, "https://cloud.langfuse.com", True),
+        (True, "https://cloud.langfuse.com", False),
+        (True, "http://localhost:3000", True),
+    ],
+)
+def test_local_only_never_exports_content_to_remote_langfuse(
+    monkeypatch: pytest.MonkeyPatch, local_only: bool, url: str, content_exported: bool
+) -> None:
+    mask = _capture_mask(monkeypatch, base_url=url, local_only=local_only)
+    assert (mask(data={"user": "resume text"}) != OMITTED) is content_exported
+
+
+def test_privacy_change_at_runtime_applies_to_next_export(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression: the mode used to be fixed when the tracer was built, so switching to
+    # local_only in the UI kept exporting prompts to a remote Langfuse.
+    mode = {"local_only": False}
+    mask = _capture_mask(
+        monkeypatch, base_url="https://cloud.langfuse.com", local_only=lambda: mode["local_only"]
+    )
+    assert mask(data="resume text") == "resume text"
+    mode["local_only"] = True
+    assert mask(data="resume text") == OMITTED
+
+
+def test_privacy_check_error_withholds_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken() -> bool:
+        raise RuntimeError("db down")
+
+    mask = _capture_mask(monkeypatch, base_url="https://cloud.langfuse.com", local_only=broken)
+    assert mask(data="resume text") == OMITTED
 
 
 def test_omit_mask_drops_content() -> None:

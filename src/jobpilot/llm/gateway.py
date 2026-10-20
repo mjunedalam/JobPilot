@@ -23,6 +23,7 @@ from jobpilot.core.config import (
     PrivacyMode,
     ProviderConfig,
 )
+from jobpilot.core.net import is_forbidden_endpoint
 from jobpilot.llm.anthropic_provider import AnthropicProvider
 from jobpilot.llm.base import (
     LLMError,
@@ -47,6 +48,8 @@ class NoRouteAvailable(LLMError):
 
 
 def make_provider(name: str, pc: ProviderConfig, api_key: str | None) -> LLMProvider:
+    if is_forbidden_endpoint(pc.base_url):
+        raise LLMError(f"provider '{name}' points at a metadata/link-local address")
     key = api_key or (os.environ.get(pc.api_key_env) if pc.api_key_env else None)
     match pc.type:
         case "anthropic":

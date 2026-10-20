@@ -50,5 +50,13 @@ private-network IP literal. Cloud targets in a route or its fallbacks are skippe
 local target fails rather than silently using the cloud. The same mode keeps prompt content out of
 traces unless Langfuse is local ([07](07-observability-and-evals.md)).
 
+## Provider URL safety
+
+- Base URLs pointing at cloud metadata services or link-local, unspecified or reserved addresses are
+  rejected (when saved, and again when a provider is built from `config.yaml`).
+- A LiteLLM provider with a custom base URL must have its own stored API key. Otherwise LiteLLM would
+  attach whichever vendor key it finds in the environment to requests sent to that URL. Without a
+  custom URL it uses the vendor's endpoint and normal environment credentials (e.g. AWS for Bedrock).
+
 Claude is always called through the official `anthropic` SDK; the OpenAI-compatible client is used only
 for servers that expose that wire format.

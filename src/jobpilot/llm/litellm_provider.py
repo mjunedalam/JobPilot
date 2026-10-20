@@ -31,6 +31,14 @@ class LiteLLMProvider:
             import litellm
         except ImportError as exc:
             raise LLMError("LiteLLM provider needs: uv sync --extra litellm") from exc
+        # With a custom api_base, LiteLLM would otherwise attach whatever vendor key it finds in
+        # the environment (OPENAI_API_KEY, AWS creds…) to requests sent to that URL. Require the
+        # key stored for this provider instead. Without api_base, LiteLLM talks to the vendor's
+        # own endpoint and the usual environment credentials apply (e.g. Bedrock via AWS).
+        if base_url and not api_key:
+            raise LLMError(
+                f"LiteLLM provider '{name}' has a custom base_url: store an API key for it"
+            )
         self.name = name
         self._litellm = litellm
         self._api_key = api_key

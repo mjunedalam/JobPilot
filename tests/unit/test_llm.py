@@ -155,6 +155,23 @@ class TestGatewayRouting:
             with pytest.raises(LLMError, match="extra litellm"):
                 make_provider("x", pc, None)
 
+    def test_metadata_endpoint_refused_even_from_config(self) -> None:
+        pc = ProviderConfig(type="openai_compatible", base_url="http://169.254.169.254/v1")
+        with pytest.raises(LLMError, match="metadata"):
+            make_provider("x", pc, None)
+
+    def test_litellm_custom_base_url_requires_stored_key(self, monkeypatch) -> None:
+        import sys
+        import types
+
+        monkeypatch.setitem(sys.modules, "litellm", types.ModuleType("litellm"))
+        from jobpilot.llm.litellm_provider import LiteLLMProvider
+
+        with pytest.raises(LLMError, match="store an API key"):
+            LiteLLMProvider("lt", api_key=None, base_url="https://proxy.example.com")
+        assert LiteLLMProvider("lt", api_key="k", base_url="https://proxy.example.com").name == "lt"
+        assert LiteLLMProvider("bedrock", api_key=None, base_url=None).name == "bedrock"
+
     def test_one_broken_provider_does_not_break_others(self) -> None:
         cfg = _config(
             providers={

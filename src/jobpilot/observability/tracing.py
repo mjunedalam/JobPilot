@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from typing import Any, Literal, Protocol
 
@@ -78,9 +78,19 @@ class LangfuseTracer:
         base_url: str | None,
         environment: str,
         sample_rate: float,
-        capture_content: bool = True,
+        capture_content: Callable[[], bool] = lambda: True,
     ) -> None:
         from langfuse import Langfuse
+
+        def mask(*, data: Any, **kwargs: Any) -> Any:
+            # Decided per export, not at startup, so a privacy change made at runtime (UI/API)
+            # applies to the very next span. Any error withholds content (fail closed).
+            try:
+                allowed = capture_content()
+            except Exception:
+                log.warning("privacy check failed; omitting trace content", exc_info=True)
+                allowed = False
+            return _mask(data=data) if allowed else _omit(data=data)
 
         self._client = Langfuse(
             public_key=public_key,
@@ -88,7 +98,7 @@ class LangfuseTracer:
             base_url=base_url,
             environment=environment,
             sample_rate=sample_rate,
-            mask=_mask if capture_content else _omit,
+            mask=mask,
         )
 
     @contextmanager
@@ -116,18 +126,22 @@ def build_tracer(
     base_url: str | None,
     environment: str,
     sample_rate: float,
-    local_only: bool = False,
+    local_only: bool | Callable[[], bool] = False,
     trusted_hosts: Iterable[str] = (),
 ) -> Tracer:
     """In local_only mode, prompt and output content is exported only to a local or private
-    Langfuse; for any other host, traces keep timing, usage and errors but no content."""
+    Langfuse; for any other host, traces keep timing, usage and errors but no content.
+
+    `local_only` may be a callable so the current (runtime-editable) privacy mode is used."""
     if not (enabled and public_key and secret_key):
         return NoopTracer()
+    is_local_only = local_only if callable(local_only) else (lambda: bool(local_only))
+    endpoint_is_local = is_local_endpoint(base_url, tuple(trusted_hosts))
     return LangfuseTracer(
         public_key=public_key,
         secret_key=secret_key,
         base_url=base_url,
         environment=environment,
         sample_rate=sample_rate,
-        capture_content=not local_only or is_local_endpoint(base_url, trusted_hosts),
+        capture_content=lambda: endpoint_is_local or not is_local_only(),
     )

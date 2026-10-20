@@ -7,8 +7,11 @@ running gateways rebuild themselves on the next call.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
+import threading
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,11 +35,13 @@ from jobpilot.core.config import (
 from jobpilot.core.crypto import Vault, VaultError
 from jobpilot.core.db import session_scope
 from jobpilot.core.models import AppSetting, LLMProviderRow, ModelRouteRow
-from jobpilot.core.net import is_local_endpoint
+from jobpilot.core.net import is_forbidden_endpoint, is_local_endpoint
 from jobpilot.llm.base import LLMProvider, StructuredResult
 from jobpilot.llm.catalog import PRESETS_BY_ID
 from jobpilot.llm.gateway import LLMGateway, build_providers
 from jobpilot.observability.tracing import Tracer
+
+log = logging.getLogger(__name__)
 
 ACTOR = "settings"
 REVISION_KEY = "llm_settings_revision"
@@ -192,8 +197,11 @@ class LLMSettingsStore:
             raise SettingsError("name must be lowercase letters, digits, '-' or '_' (max 64)")
         if preset != "custom" and preset not in PRESETS_BY_ID:
             raise SettingsError(f"unknown preset '{preset}'")
-        if type == "openai_compatible" and not base_url.startswith(("http://", "https://")):
+        needs_url = type == "openai_compatible" or bool(base_url)
+        if needs_url and not base_url.startswith(("http://", "https://")):
             raise SettingsError("base_url must start with http:// or https://")
+        if is_forbidden_endpoint(base_url):
+            raise SettingsError("base_url may not be a metadata, link-local or reserved address")
         row = self._s.get(LLMProviderRow, name) or LLMProviderRow(name=name)
         row.preset, row.type, row.base_url = preset, type, base_url.strip()
         row.structured_mode, row.enabled = structured_mode, enabled
@@ -274,6 +282,41 @@ class LLMSettingsStore:
         self._put(REVISION_KEY, self.revision() + 1)
         self._s.flush()
         log_action(self._s, ACTOR, action, entity_type="llm_settings", payload=payload)
+
+
+class PrivacyState:
+    """The effective privacy mode for code that cannot hold a DB session, such as the tracer's
+    export mask (which runs on a background thread). Cached for `ttl_s`; if the setting cannot
+    be read it reports local_only, so a failure never widens what leaves the machine."""
+
+    def __init__(
+        self, sessions: sessionmaker[Session], base: LLMConfig, ttl_s: float = 2.0
+    ) -> None:
+        self._sessions = sessions
+        self._base = base
+        self._ttl = ttl_s
+        self._value: PrivacyMode | None = None
+        self._read_at = 0.0
+        self._lock = threading.Lock()
+
+    def local_only(self) -> bool:
+        with self._lock:
+            now = time.monotonic()
+            if self._value is None or now - self._read_at > self._ttl:
+                try:
+                    with session_scope(self._sessions) as session:
+                        self._value = LLMSettingsStore(session, self._base, None).privacy_mode()
+                except Exception:
+                    log.warning(
+                        "could not read privacy mode; treating as local_only", exc_info=True
+                    )
+                    self._value = PrivacyMode.LOCAL_ONLY
+                self._read_at = now
+            return self._value is PrivacyMode.LOCAL_ONLY
+
+    def invalidate(self) -> None:
+        with self._lock:
+            self._value = None
 
 
 class RuntimeGateway:

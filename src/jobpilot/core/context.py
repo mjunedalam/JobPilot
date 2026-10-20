@@ -9,14 +9,14 @@ from pathlib import Path
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from jobpilot.core.config import AppConfig, PrivacyMode, Settings
+from jobpilot.core.config import AppConfig, Settings
 from jobpilot.core.crypto import Vault, VaultError
 from jobpilot.core.db import make_engine, make_session_factory
 from jobpilot.core.killswitch import KillSwitch
 from jobpilot.harness.circuit import CircuitBreaker
 from jobpilot.harness.runner import AgentHarness, AgentSpec
 from jobpilot.harness.tools import ToolRegistry
-from jobpilot.llm.settings import RuntimeGateway
+from jobpilot.llm.settings import PrivacyState, RuntimeGateway
 from jobpilot.observability.tracing import Tracer, build_tracer
 
 
@@ -51,7 +51,7 @@ class AppContext:
             base_url=self.settings.langfuse_base_url,
             environment=obs.environment,
             sample_rate=obs.sample_rate,
-            local_only=self.config.llm.privacy_mode is PrivacyMode.LOCAL_ONLY,
+            local_only=self.privacy.local_only,
             trusted_hosts=obs.trusted_trace_hosts,
         )
 
@@ -62,6 +62,10 @@ class AppContext:
             return self.vault
         except VaultError:
             return None
+
+    @cached_property
+    def privacy(self) -> PrivacyState:
+        return PrivacyState(self.sessions, self.config.llm)
 
     @cached_property
     def gateway(self) -> RuntimeGateway:

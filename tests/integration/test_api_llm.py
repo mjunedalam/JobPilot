@@ -94,6 +94,14 @@ def test_bad_provider_name_is_rejected(client: TestClient) -> None:
     assert response.status_code == 422
 
 
+def test_privacy_mode_change_reaches_tracer_check_immediately(
+    client: TestClient, ctx: AppContext
+) -> None:
+    assert ctx.privacy.local_only() is False  # primes the cache
+    client.put("/api/v1/llm/settings/privacy", headers=AUTH, json={"privacy_mode": "local_only"})
+    assert ctx.privacy.local_only() is True  # no waiting for the cache TTL
+
+
 def test_privacy_mode_round_trip(client: TestClient) -> None:
     out = client.put(
         "/api/v1/llm/settings/privacy", headers=AUTH, json={"privacy_mode": "local_only"}

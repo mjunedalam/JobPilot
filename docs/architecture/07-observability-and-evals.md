@@ -20,6 +20,8 @@ flowchart TD
 - Tracing turns off cleanly when `LANGFUSE_*` keys are absent (no-op tracer).
 - With `privacy_mode: local_only`, prompt and output content is exported only to a local or private-network
   Langfuse. For any other host, traces keep timing, token usage and errors but replace content with a placeholder.
+  The mode is checked when each span is exported (cached for 2 s, refreshed immediately when changed through the
+  API), so switching to local_only in the UI applies to the next span. If the mode can't be read, content is withheld.
 
 ## Evaluation with TruLens
 
