@@ -85,6 +85,9 @@ class TestNormalize:
         [
             ("Bangalore, Karnataka", "bengaluru"),
             ("Bengaluru / Hyderabad", "bengaluru"),
+            ("Pune, Bengaluru", "pune"),  # multi-city: the first listed is primary
+            ("Pune, Maharashtra, India", "pune"),
+            ("Hyderabad (Hybrid)", "hyderabad"),
             ("Gurgaon", "gurugram"),
             ("Remote (India)", "remote"),
             ("Work from home", "remote"),

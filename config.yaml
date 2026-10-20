@@ -62,8 +62,13 @@ email:
   otp_max_age_minutes: 10
 
 portals:
-  # Adapters other than official APIs are off by default. See the ToS note in README.md.
+  # Off by default: automated use may breach a portal's terms (see README). Enable per portal on
+  # the Jobs page, which records your acceptance, or list names here (naukri, linkedin, shine).
   enabled: []
+  browser_channel: chrome     # drive your installed Chrome; set to null for Playwright's Chromium
+  headed: false               # searches run in the background; sign-in always opens a window
+  min_delay_seconds: 4        # human-paced gap between page loads
+  max_delay_seconds: 12
 
 notifications:
   channels: [desktop]

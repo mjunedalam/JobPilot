@@ -9,6 +9,7 @@ from pathlib import Path
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from jobpilot.agents.search.agent import SearchAgent
 from jobpilot.core.config import AppConfig, Settings
 from jobpilot.core.crypto import Vault, VaultError
 from jobpilot.core.db import make_engine, make_session_factory
@@ -18,6 +19,8 @@ from jobpilot.harness.runner import AgentHarness, AgentSpec
 from jobpilot.harness.tools import ToolRegistry
 from jobpilot.llm.settings import PrivacyState, RuntimeGateway
 from jobpilot.observability.tracing import Tracer, build_tracer
+from jobpilot.portals.base import PortalAdapter
+from jobpilot.portals.browser import PageFetcher, PlaywrightFetcher
 
 
 @dataclass
@@ -78,6 +81,32 @@ class AppContext:
     @cached_property
     def circuit(self) -> CircuitBreaker:
         return CircuitBreaker()
+
+    def fetcher(
+        self,
+        adapter: PortalAdapter,
+        storage_state: dict | None = None,
+        *,
+        headed: bool | None = None,
+    ) -> PageFetcher:
+        cfg = self.config.portals
+        return PlaywrightFetcher(
+            storage_state=storage_state,
+            headed=cfg.headed if headed is None else headed,
+            channel=cfg.browser_channel,
+            min_delay_s=cfg.min_delay_seconds,
+            max_delay_s=max(cfg.max_delay_seconds, cfg.min_delay_seconds),
+        )
+
+    def search_agent(self) -> SearchAgent:
+        return SearchAgent(
+            sessions=self.sessions,
+            kill_switch=self.kill_switch,
+            llm=self.gateway,
+            vault=self.optional_vault,
+            tracer=self.tracer,
+            fetcher_factory=lambda adapter, state: self.fetcher(adapter, state),
+        )
 
     def harness(self, spec: AgentSpec) -> AgentHarness:
         return AgentHarness(

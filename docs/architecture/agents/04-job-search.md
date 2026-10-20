@@ -30,3 +30,13 @@ flowchart TD
 | Tracing | one Langfuse span per run; tools, retrievals and generations nested |
 
 Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist, budgets, retries and approval binding apply to every tool call.
+
+## Implementation status (Phase 2)
+
+- Each source runs as a harness tool `portal.search:<name>` with a per-portal circuit breaker; a
+  blocked portal is reported (H1) while the others continue.
+- Normalisation merges company suffixes, city aliases and title abbreviations; the primary city is
+  the first one listed. Dedup requires matching level words (Senior ≠ plain).
+- Red flags are computed per listing before dedup and carried through merges, so a scam listing
+  that copies a genuine job still taints it; reviewed jobs (past `found`) are frozen.
+- Undated listings are excluded from a recency window unless the user includes them.

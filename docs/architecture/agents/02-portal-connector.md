@@ -43,3 +43,15 @@ Never solves CAPTCHAs, never rotates proxies. Any block/warning page sets the po
 | Tracing | one Langfuse span per run; tools, retrievals and generations nested |
 
 Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist, budgets, retries and approval binding apply to every tool call.
+
+## Implementation status (Phase 2)
+
+- Adapters: Naukri, LinkedIn (public search pages), Shine, and a generic LLM adapter for any URL.
+  Known-portal parsers are pure functions tested against fixture pages; **their selectors are
+  best-effort and not verified against the live sites**, which change often.
+- Every portal is disabled until the user enables it and accepts its terms note (audited).
+- Sign-in: password (Naukri, Shine) or manual in a visible browser (all). CAPTCHA, 2FA, warning or
+  rate-limit pages mark the portal `needs_attention`/`blocked` and raise checkpoint H1.
+- Email OTP uses the `OtpSource` interface, implemented by the Email Monitor in Phase 4; until then
+  OTP sign-ins fall back to manual.
+- Sessions (Playwright storage state) and credentials are Fernet-encrypted; sessions expire after 14 days.

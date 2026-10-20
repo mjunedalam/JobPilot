@@ -23,7 +23,8 @@ MATCHING = AgentSpec(
 SEARCH = AgentSpec(
     name="search_agent",
     model_role=ModelRole.FAST,
-    allowed_tools=frozenset({"portal.search"}),
+    # Per-portal tools (`portal.search:<name>`) are registered and allowed at run time.
+    allowed_tools=frozenset(),
     budget=Budget(max_steps=50, max_tokens=200_000, max_cost_usd=0.50, deadline_s=1800),
 )
 

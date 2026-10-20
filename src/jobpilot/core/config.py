@@ -134,7 +134,13 @@ class EmailConfig(_Frozen):
 
 
 class PortalsConfig(_Frozen):
+    # Off by default: automated use may breach a portal's terms. Enable per portal in the UI
+    # (which records your acceptance) or list names here.
     enabled: tuple[str, ...] = ()
+    browser_channel: str | None = "chrome"  # use the installed Chrome; None = bundled Chromium
+    headed: bool = False  # sign-in always opens a visible window regardless
+    min_delay_seconds: float = Field(4.0, ge=1)
+    max_delay_seconds: float = Field(12.0, ge=1)
 
 
 class NotificationsConfig(_Frozen):

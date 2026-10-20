@@ -60,7 +60,9 @@ def normalize_location(location: str) -> str:
     folded = _fold(location)
     if not folded or _REMOTE_WORDS.search(folded):
         return "remote" if folded else ""
-    first = re.split(r"[,/|;]| or | and ", folded)[0].strip()
+    # Split on separators before folding (which strips commas): "Pune, Maharashtra, India" and
+    # "Pune, Bengaluru" both have Pune as their primary city.
+    first = _fold(re.split(r"[,/|;(]| or | and ", location.casefold())[0])
     for alias, city in sorted(_CITY_ALIASES.items(), key=lambda kv: -len(kv[0])):
         if alias in first:
             return city
