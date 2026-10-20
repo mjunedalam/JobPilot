@@ -98,3 +98,48 @@ def test_allowed_plain_http_is_rewritten_to_origin_form() -> None:
         )
     assert reply.endswith(b"ok")
     server.close()
+
+
+def test_plain_http_is_one_request_per_connection() -> None:
+    """Regression: a reused keep-alive connection could carry a second request for another host
+    (with that host's cookies) to the first, vetted upstream."""
+    received: list[bytes] = []
+    server = socket.socket()
+    server.bind(("127.0.0.1", 0))
+    server.listen()
+    port = server.getsockname()[1]
+
+    def serve() -> None:
+        conn, _ = server.accept()
+        with conn:
+            data = b""
+            while b"\r\n\r\n" not in data:
+                data += conn.recv(4096)
+            received.append(data)
+            conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+
+    threading.Thread(target=serve, daemon=True).start()
+    with EgressProxy(resolver=lambda h, p: ["127.0.0.1"], allowed=lambda a: True) as proxy:
+        host, pport = proxy.url.removeprefix("http://").split(":")
+        with socket.create_connection((host, int(pport)), timeout=5) as s:
+            s.sendall(
+                f"GET http://a.example:{port}/ HTTP/1.1\r\nHost: a.example\r\n"
+                "Proxy-Connection: keep-alive\r\nConnection: keep-alive\r\n\r\n".encode()
+            )
+            reply = b""
+            while chunk := s.recv(4096):
+                reply += chunk
+            # The proxy closed the client side after one response, so nothing else can ride it.
+            assert reply.endswith(b"ok")
+    server.close()
+    [request] = received
+    assert b"Connection: close" in request
+    assert b"keep-alive" not in request.lower() and b"proxy-connection" not in request.lower()
+
+
+def test_chunked_request_body_refused() -> None:
+    with EgressProxy(resolver=lambda h, p: ["127.0.0.1"], allowed=lambda a: True) as proxy:
+        reply = _send(
+            proxy, b"POST http://x.example/ HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+        )
+    assert reply.startswith(b"HTTP/1.1 400")

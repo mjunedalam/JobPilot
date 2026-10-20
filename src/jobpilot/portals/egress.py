@@ -27,6 +27,18 @@ Resolver = Callable[[str, int], list[str]]
 AddressPolicy = Callable[[str], bool]
 
 MAX_HEADER_BYTES = 64 * 1024
+_HOP_BY_HOP = frozenset(
+    {
+        b"connection",
+        b"proxy-connection",
+        b"keep-alive",
+        b"te",
+        b"trailer",
+        b"upgrade",
+        b"proxy-authorization",
+        b"proxy-authenticate",
+    }
+)
 CONNECT_TIMEOUT_S = 15
 IDLE_TIMEOUT_S = 120
 
@@ -74,23 +86,69 @@ class _Handler(socketserver.BaseRequestHandler):
                 host, _, port_text = target.rpartition(":")
                 upstream = self._open(host.strip("[]"), int(port_text or 443))
                 client.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
-            else:
-                parts = urlsplit(target)
-                if parts.scheme not in ("http", "ws") or not parts.hostname:
-                    raise EgressBlocked("only absolute http(s) requests are proxied")
-                upstream = self._open(parts.hostname, parts.port or 80)
-                path = parts.path or "/"
-                if parts.query:
-                    path += "?" + parts.query
-                upstream.sendall(f"{method} {path} {version}\r\n".encode("latin-1") + rest)
+                self._pipe(client, upstream)  # a tunnel is bound to one vetted host:port
+                return
+            self._forward_one(client, method, target, version, rest)
         except EgressBlocked as exc:
             log.info("egress blocked: %s", exc)
             self._refuse(client, str(exc))
-            return
         except (OSError, ValueError) as exc:
             self._refuse(client, f"bad request: {exc}", status=b"400 Bad Request")
+
+    def _forward_one(
+        self, client: socket.socket, method: str, target: str, version: str, rest: bytes
+    ) -> None:
+        """Plain HTTP: exactly one request per connection. A reused keep-alive connection
+        would otherwise carry a request for host B (with B's cookies) to the vetted host A."""
+        parts = urlsplit(target)
+        if parts.scheme not in ("http", "ws") or not parts.hostname:
+            raise EgressBlocked("only absolute http(s) requests are proxied")
+        header_block, _, early_body = rest.partition(b"\r\n\r\n")
+        headers = [h for h in header_block.split(b"\r\n") if h]
+        names = {h.split(b":", 1)[0].strip().lower() for h in headers}
+        if b"transfer-encoding" in names:
+            raise ValueError("chunked request bodies are not supported")
+        upgrade = b"upgrade" in names  # WebSocket handshake: the socket becomes one stream
+        kept = [
+            h
+            for h in headers
+            if h.split(b":", 1)[0].strip().lower() not in _HOP_BY_HOP
+            or (upgrade and h.split(b":", 1)[0].strip().lower() in (b"upgrade", b"connection"))
+        ]
+        if not upgrade:
+            kept.append(b"Connection: close")
+        length = next(
+            (
+                int(h.split(b":", 1)[1])
+                for h in headers
+                if h.split(b":", 1)[0].strip().lower() == b"content-length"
+            ),
+            0,
+        )
+
+        upstream = self._open(parts.hostname, parts.port or 80)
+        path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+        upstream.sendall(
+            f"{method} {path} {version}\r\n".encode("latin-1")
+            + b"\r\n".join(kept)
+            + b"\r\n\r\n"
+            + early_body[:length]
+        )
+        if upgrade:
+            self._pipe(client, upstream)
             return
-        self._pipe(client, upstream)
+        remaining = length - len(early_body[:length])
+        while remaining > 0:  # the declared body, and nothing beyond it
+            chunk = client.recv(min(65536, remaining))
+            if not chunk:
+                break
+            upstream.sendall(chunk)
+            remaining -= len(chunk)
+        try:
+            while data := upstream.recv(65536):  # response until the server closes
+                client.sendall(data)
+        finally:
+            upstream.close()
 
     def _read_head(self, client: socket.socket) -> bytes:
         data = b""

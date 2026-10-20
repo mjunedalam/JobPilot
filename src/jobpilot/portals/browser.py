@@ -63,12 +63,13 @@ class PlaywrightFetcher:
         channel: str | None = "chrome",
         min_delay_s: float = 4.0,
         max_delay_s: float = 12.0,
+        egress: EgressProxy | None = None,  # tests inject a proxy with a permissive policy
     ) -> None:
         try:
             from playwright.sync_api import sync_playwright
         except ImportError as exc:
             raise RuntimeError("Playwright is not installed: uv sync --extra browser") from exc
-        self._proxy = EgressProxy().start()
+        self._proxy = (egress or EgressProxy()).start()
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(
             channel=channel,
