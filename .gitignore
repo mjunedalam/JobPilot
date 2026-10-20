@@ -8,3 +8,6 @@ data/
 .ruff_cache/
 dist/
 .mypy_cache/
+web/node_modules/
+web/dist/
+*.tsbuildinfo

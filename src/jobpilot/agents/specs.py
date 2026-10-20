@@ -10,7 +10,8 @@ from jobpilot.harness.runner import AgentSpec
 PROFILE = AgentSpec(
     name="profile_agent",
     model_role=ModelRole.EXTRACTION,
-    budget=Budget(max_steps=10, max_tokens=120_000, max_cost_usd=0.30, deadline_s=180),
+    # 600s deadline: a resume extraction on a laptop-class local model can take minutes.
+    budget=Budget(max_steps=10, max_tokens=120_000, max_cost_usd=0.30, deadline_s=600),
 )
 
 SPECS: dict[str, AgentSpec] = {spec.name: spec for spec in (PROFILE,)}

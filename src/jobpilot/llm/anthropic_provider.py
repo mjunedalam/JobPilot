@@ -21,14 +21,18 @@ class AnthropicProvider:
         name: str = "anthropic",
         client: anthropic.Anthropic | None = None,
         timeout_s: float = 120.0,
+        api_key: str | None = None,
     ) -> None:
         self.name = name
-        self._client = client or anthropic.Anthropic(timeout=timeout_s, max_retries=0)
+        # max_retries=0: the gateway owns retries so attempts are traced and budgeted.
+        # api_key=None lets the SDK fall back to ANTHROPIC_API_KEY or an `ant auth login` profile.
+        self._client = client or anthropic.Anthropic(
+            api_key=api_key, timeout=timeout_s, max_retries=0
+        )
 
     def structured[T: BaseModel](
         self, *, model: str, system: str, user: str, schema: type[T], max_tokens: int
     ) -> StructuredResult[T]:
-        # max_retries=0: the gateway owns retries so attempts are traced and budgeted.
         try:
             response = self._client.messages.parse(
                 model=model,
@@ -52,3 +56,11 @@ class AnthropicProvider:
             raise LLMOutputInvalid("Claude returned no structured output")
         usage = Usage(response.usage.input_tokens, response.usage.output_tokens)
         return StructuredResult(response.parsed_output, usage, self.name, model)
+
+    def list_models(self) -> list[str]:
+        try:
+            return sorted(m.id for m in self._client.models.list())
+        except anthropic.APIStatusError as exc:
+            raise LLMError(f"anthropic {exc.status_code}: could not list models") from exc
+        except anthropic.APIConnectionError as exc:
+            raise RetryableLLMError("could not reach the Anthropic API") from exc

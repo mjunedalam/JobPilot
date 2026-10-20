@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from jobpilot.agents.profile.schema import CandidateProfile
+from jobpilot.agents.profile.schema import CandidateProfile, ResumeFacts
 from jobpilot.core.config import ModelRole
 from jobpilot.harness.guardrails import fence_untrusted
 from jobpilot.llm.base import SupportsStructured
@@ -26,8 +26,11 @@ class ProfileExtractor:
             role=ModelRole.EXTRACTION,
             system=prompt.text,
             user=fence_untrusted(resume_text, source="resume"),
-            schema=CandidateProfile,
+            schema=ResumeFacts,
             prompt_name=prompt.name,
             prompt_version=prompt.version,
         )
-        return result.value
+        # Only resume facts cross into the profile, whatever the model returned. Salary, notice,
+        # experience and preferences are left empty so the user is asked for them.
+        facts = result.value.model_dump(include=set(ResumeFacts.model_fields))
+        return CandidateProfile.model_validate(facts)

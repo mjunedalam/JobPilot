@@ -55,3 +55,18 @@ class StopIn(BaseModel):
 class KillSwitchOut(BaseModel):
     engaged: bool
     reason: str
+
+
+class ImportResultOut(BaseModel):
+    version: int | None
+    resume_label: str
+    missing: list[MissingFieldOut]
+    usage: dict[str, float]
+
+
+class ProfileQAIn(BaseModel):
+    answers: dict[str, str] = Field(
+        ...,
+        min_length=1,
+        description="Field name to free-text answer, e.g. '30 LPA', 'Pune, Delhi'",
+    )

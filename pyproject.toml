@@ -15,6 +15,7 @@ dependencies = [
     "langfuse>=5.0",
     # API
     "fastapi>=0.149",
+    "python-multipart>=0.0.20",
     "uvicorn[standard]>=0.32",
     # storage
     "sqlalchemy>=2.0.36",
@@ -39,7 +40,8 @@ postgres = ["psycopg[binary]>=3.2", "pgvector>=0.3", "langgraph-checkpoint-postg
 embeddings = ["fastembed>=0.9"]
 eval = ["trulens-core>=2.16", "trulens-feedback>=2.16", "trulens-providers-litellm>=2.16"]
 browser = ["playwright>=1.49"]
-all = ["jobpilot[postgres,embeddings,eval,browser]"]
+litellm = ["litellm>=1.80"]
+all = ["jobpilot[postgres,embeddings,eval,browser,litellm]"]
 
 [project.scripts]
 jobpilot = "jobpilot.cli:app"

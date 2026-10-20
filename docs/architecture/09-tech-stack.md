@@ -6,11 +6,13 @@
 | Packaging | uv + `pyproject.toml`, optional extras | Fast, reproducible lockfile |
 | Orchestration | LangGraph 1.x (`interrupt()`, Postgres/SQLite checkpointer) | Durable state; HITL that survives restarts |
 | LLM (paid) | Anthropic Claude via the official SDK (`messages.parse` structured output) | Strongest tool use and extraction |
-| LLM (open-source) | Ollama / vLLM through an OpenAI-compatible provider | Local or private deployment; `privacy_mode: local_only` |
+| LLM (open-source, default) | Ollama, LM Studio, vLLM, or any OpenAI-compatible host; LiteLLM extra for Bedrock/Vertex/Azure | Every role defaults to local models; switch any role to any provider at runtime |
 | RAG | Agentic RAG subgraph; FastEmbed (BGE) embeddings; pgvector; hybrid search + RRF | Grounded answers with abstention |
 | Observability | Langfuse 5 (OpenTelemetry based) | Traces, cost, prompt versions, scores |
 | Evaluation | TruLens (core + feedback + LiteLLM provider) | RAG triad, groundedness; judge can be Claude or local |
 | API | FastAPI + Pydantic v2, OpenAPI 3.1 | Typed contracts, generated spec |
+| Web UI | React 19, TypeScript 5.9, Vite 8, React Router 7, TanStack Query 5, openapi-fetch | Types generated from the API spec; server state cached and invalidated per mutation |
+| UI tests | Vitest 5, Testing Library, Playwright (E2E against the real API and local models) | Component behaviour plus full-flow checks |
 | Storage | PostgreSQL 17 + pgvector (SQLite in local mode), SQLAlchemy 2, Alembic | One store for relational and vector data |
 | Browser | Playwright (persistent, headed-capable contexts) | Manual takeover for CAPTCHA/2FA |
 | Email | Gmail API, Microsoft Graph (OAuth) | Least-privilege scopes |

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WorkMode(StrEnum):
@@ -18,6 +18,12 @@ class Skill(BaseModel):
 
     name: str
     years: float | None = None
+
+    @field_validator("years")
+    @classmethod
+    def _zero_means_unknown(cls, value: float | None) -> float | None:
+        # Nobody lists a skill they have used for zero years; 0 is a model placeholder.
+        return value if value is None or value > 0 else None
 
 
 class Education(BaseModel):
@@ -39,8 +45,8 @@ class Certification(BaseModel):
 class Money(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    amount: float
-    currency: str = "INR"
+    amount: float = Field(gt=0)
+    currency: str = Field("INR", min_length=3, max_length=3)
     period: str = "year"
 
 
@@ -78,6 +84,32 @@ class CandidateProfile(BaseModel):
     excluded_companies: list[str] = Field(default_factory=list)
     work_authorization: str = ""
     links: Links = Field(default_factory=Links)
+
+
+class ResumeFacts(BaseModel):
+    """What the extraction model may read from a resume. Deliberately excludes salary, notice
+    period, experience totals, preferences and work authorization: models tend to fill those
+    with plausible placeholders (measured: CTC 0, notice 0, every work mode), and a wrong value
+    would end up on real applications. Those come only from the user (USER_ONLY_FIELDS)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    full_name: str = ""
+    email: str = ""
+    phone: str = ""
+    current_location: str = ""
+    current_role: str = ""
+    current_company: str = ""
+    summary: str = ""
+    skills: list[Skill] = Field(default_factory=list)
+    education: list[Education] = Field(default_factory=list)
+    certifications: list[Certification] = Field(default_factory=list)
+    links: Links = Field(default_factory=Links)
+
+
+USER_ONLY_FIELDS: frozenset[str] = frozenset(CandidateProfile.model_fields) - frozenset(
+    ResumeFacts.model_fields
+)
 
 
 # Fields the user must supply before the profile is ready for searching and applying.

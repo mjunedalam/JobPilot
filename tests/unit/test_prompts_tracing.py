@@ -16,7 +16,7 @@ from jobpilot.prompts import load_prompt
 
 def test_prompt_front_matter_parsed() -> None:
     prompt = load_prompt("profile_extraction")
-    assert prompt.version == "1"
+    assert prompt.version == "2"
     assert not prompt.text.startswith("---")
     assert "untrusted_content" in prompt.text
 

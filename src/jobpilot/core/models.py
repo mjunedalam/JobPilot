@@ -200,3 +200,45 @@ class IdempotencyRecord(Base):
     payload_sha256: Mapped[str] = mapped_column(String(64))
     result: Mapped[dict[str, Any]] = mapped_column(default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class LLMProviderRow(Base):
+    """A provider the user added at runtime. API keys are stored only as Fernet ciphertext."""
+
+    __tablename__ = "llm_providers"
+
+    name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    preset: Mapped[str] = mapped_column(String(64), default="custom")
+    type: Mapped[str] = mapped_column(String(32))
+    base_url: Mapped[str] = mapped_column(String(500), default="")
+    api_key_enc: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    structured_mode: Mapped[str] = mapped_column(String(16), default="json_schema")
+    reasoning_effort: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class ModelRouteRow(Base):
+    """Runtime override of config.yaml's llm.roles entry for one role."""
+
+    __tablename__ = "model_routes"
+
+    role: Mapped[str] = mapped_column(String(32), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(200))
+    fallbacks: Mapped[list[Any]] = mapped_column(default=list)
+    max_tokens: Mapped[int] = mapped_column(Integer, default=16000)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class AppSetting(Base):
+    """Small key/value store for runtime settings (privacy mode, settings revision)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[Any] = mapped_column(JSON)

@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from jobpilot.core.audit import find_decision, log_action, log_decision
-from jobpilot.core.config import AppConfig, ModelRole, PrivacyMode
+from jobpilot.core.config import AppConfig, ModelRole
 from jobpilot.core.crypto import Vault, VaultError
 from jobpilot.core.hashing import content_sha256
 from jobpilot.core.killswitch import KillSwitch, KillSwitchEngaged
@@ -125,8 +125,10 @@ class TestKillSwitch:
 class TestConfig:
     def test_repo_config_file_is_valid(self) -> None:
         cfg = AppConfig.load(Path(__file__).parents[2] / "config.yaml")
-        assert cfg.llm.roles[ModelRole.REASONING].model == "claude-opus-5-5"
-        assert cfg.llm.roles[ModelRole.FAST].fallbacks[0].provider == "local"
+        # Open-source by default: every role routes to the local Ollama provider.
+        assert {r.provider for r in cfg.llm.roles.values()} == {"ollama"}
+        assert cfg.llm.is_local_provider("ollama") and not cfg.llm.is_local_provider("anthropic")
+        assert cfg.llm.providers["ollama"].reasoning_effort == "none"
 
     def test_missing_file_gives_defaults(self, tmp_path: Path) -> None:
         assert AppConfig.load(tmp_path / "nope.yaml").application.daily_cap_per_portal == 25
@@ -136,9 +138,27 @@ class TestConfig:
         with pytest.raises(ValidationError, match="unknown provider"):
             AppConfig.model_validate({"llm": {"roles": roles}})
 
-    def test_local_only_requires_openai_compatible_local_provider(self) -> None:
-        with pytest.raises(ValidationError, match="local_only"):
-            AppConfig.model_validate({"llm": {"privacy_mode": PrivacyMode.LOCAL_ONLY}})
+    def test_local_provider_detection_uses_base_url(self) -> None:
+        cfg = AppConfig.model_validate(
+            {
+                "llm": {
+                    "providers": {
+                        "anthropic": {"type": "anthropic"},
+                        "box": {
+                            "type": "openai_compatible",
+                            "base_url": "http://192.168.1.20:8000/v1",
+                        },
+                        "cloud": {
+                            "type": "openai_compatible",
+                            "base_url": "https://api.groq.com/openai/v1",
+                        },
+                    }
+                }
+            }
+        )
+        assert cfg.llm.is_local_provider("box")
+        assert not cfg.llm.is_local_provider("cloud")
+        assert not cfg.llm.is_local_provider("missing")
 
     def test_non_mapping_yaml_rejected(self, tmp_path: Path) -> None:
         bad = tmp_path / "c.yaml"

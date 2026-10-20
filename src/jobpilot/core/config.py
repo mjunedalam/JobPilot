@@ -11,6 +11,8 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from jobpilot.core.net import is_local_endpoint
+
 DEFAULT_CONFIG_PATH = Path("config.yaml")
 DEFAULT_DATA_DIR = Path("data")
 
@@ -35,11 +37,22 @@ class PrivacyMode(StrEnum):
     LOCAL_ONLY = "local_only"
 
 
+ProviderType = Literal["anthropic", "openai_compatible", "litellm"]
+StructuredMode = Literal["json_schema", "json_object", "prompt"]
+ReasoningEffort = Literal["none", "low", "medium", "high"]
+
+
 class ProviderConfig(_Frozen):
-    type: Literal["anthropic", "openai_compatible"]
+    type: ProviderType
     base_url: str | None = None
     api_key_env: str | None = None
     timeout_s: float = 120.0
+    # How to get JSON out of an OpenAI-compatible server: native json_schema (Ollama, OpenAI,
+    # vLLM), json_object mode plus schema in the prompt, or prompt-only for servers with neither.
+    structured_mode: StructuredMode = "json_schema"
+    # Thinking budget for OpenAI-compatible reasoning models (e.g. Qwen3 via Ollama). "none"
+    # skips hidden thinking: ~10x faster structured extraction with the same quality in tests.
+    reasoning_effort: ReasoningEffort | None = None
 
 
 class ModelTarget(_Frozen):
@@ -58,8 +71,8 @@ class Pricing(_Frozen):
 
 
 class LLMConfig(_Frozen):
+    # local_only: only providers whose base_url is localhost or a private-network IP are used.
     privacy_mode: PrivacyMode = PrivacyMode.STANDARD
-    local_provider: str = "local"
     providers: dict[str, ProviderConfig] = Field(
         default_factory=lambda: {"anthropic": ProviderConfig(type="anthropic")}
     )
@@ -79,13 +92,11 @@ class LLMConfig(_Frozen):
             for target in (route, *route.fallbacks):
                 if target.provider not in self.providers:
                     raise ValueError(f"role '{role}' uses unknown provider '{target.provider}'")
-        if self.privacy_mode is PrivacyMode.LOCAL_ONLY:
-            local = self.providers.get(self.local_provider)
-            if local is None or local.type != "openai_compatible":
-                raise ValueError(
-                    "local_only needs llm.local_provider to be an openai_compatible provider"
-                )
         return self
+
+    def is_local_provider(self, name: str) -> bool:
+        pc = self.providers.get(name)
+        return pc is not None and pc.type == "openai_compatible" and is_local_endpoint(pc.base_url)
 
 
 class RAGConfig(_Frozen):

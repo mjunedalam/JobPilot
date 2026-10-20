@@ -7,7 +7,7 @@ flowchart TB
     subgraph UI["Interface layer"]
         CLI["Typer CLI"]
         API["FastAPI REST · /api/v1<br/>OpenAPI 3.1 spec"]
-        WEB["Web chat (SSE)"]
+        WEB["React web UI<br/>(typed from OpenAPI)"]
         NOTIF["Notifiers<br/>Telegram · Desktop · Email"]
     end
 
@@ -40,7 +40,8 @@ flowchart TB
     subgraph AI["AI services"]
         GW["LLM gateway<br/>role → provider/model routing · fallback"]
         P_ANT["Anthropic<br/>Claude Opus / Sonnet / Haiku"]
-        P_OSS["Open-source<br/>Ollama · vLLM (Llama, Qwen, Mistral)"]
+        P_OSS["Any OpenAI-compatible<br/>Ollama · vLLM · LM Studio · OpenAI ·<br/>Gemini · Groq · OpenRouter …"]
+        P_LIT["LiteLLM (optional)<br/>Bedrock · Vertex · Azure"]
         RAG["Agentic RAG subgraph<br/>retrieve · grade · rewrite · generate · verify"]
         EMB["Embeddings<br/>FastEmbed (local) · configurable"]
         PROMPTS["Versioned prompts<br/>prompts/*.md"]
@@ -74,7 +75,7 @@ flowchart TB
     HARN --> GW & RAG & PA & MAIL & CAL
     RAG --> GW
     RAG --> EMB
-    GW --> P_ANT & P_OSS
+    GW --> P_ANT & P_OSS & P_LIT
     GW --> PROMPTS
     PA --> PW
     HARN -. spans .-> LF

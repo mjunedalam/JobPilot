@@ -10,13 +10,13 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from jobpilot.core.config import AppConfig, PrivacyMode, Settings
-from jobpilot.core.crypto import Vault
+from jobpilot.core.crypto import Vault, VaultError
 from jobpilot.core.db import make_engine, make_session_factory
 from jobpilot.core.killswitch import KillSwitch
 from jobpilot.harness.circuit import CircuitBreaker
 from jobpilot.harness.runner import AgentHarness, AgentSpec
 from jobpilot.harness.tools import ToolRegistry
-from jobpilot.llm.gateway import LLMGateway, build_providers
+from jobpilot.llm.settings import RuntimeGateway
 from jobpilot.observability.tracing import Tracer, build_tracer
 
 
@@ -56,8 +56,16 @@ class AppContext:
         )
 
     @cached_property
-    def gateway(self) -> LLMGateway:
-        return LLMGateway(self.config.llm, build_providers(self.config.llm), self.tracer)
+    def optional_vault(self) -> Vault | None:
+        """The vault, or None when no master key is set (API keys then can't be saved)."""
+        try:
+            return self.vault
+        except VaultError:
+            return None
+
+    @cached_property
+    def gateway(self) -> RuntimeGateway:
+        return RuntimeGateway(self.sessions, self.config.llm, self.optional_vault, self.tracer)
 
     @cached_property
     def tools(self) -> ToolRegistry:

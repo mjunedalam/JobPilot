@@ -9,7 +9,7 @@ import pytest
 from pydantic import BaseModel
 from tenacity import wait_none
 
-from jobpilot.core.config import LLMConfig, ModelRole, Pricing, PrivacyMode
+from jobpilot.core.config import LLMConfig, ModelRole, Pricing, PrivacyMode, ProviderConfig
 from jobpilot.llm.anthropic_provider import AnthropicProvider
 from jobpilot.llm.base import (
     LLMError,
@@ -19,7 +19,14 @@ from jobpilot.llm.base import (
     StructuredResult,
     Usage,
 )
-from jobpilot.llm.gateway import LLMGateway, NoRouteAvailable, build_providers, estimate_cost
+from jobpilot.llm.gateway import (
+    LazyProvider,
+    LLMGateway,
+    NoRouteAvailable,
+    build_providers,
+    estimate_cost,
+    make_provider,
+)
 from jobpilot.llm.openai_compatible import OpenAICompatibleProvider
 
 
@@ -39,7 +46,7 @@ def _config(**overrides: Any) -> LLMConfig:
     base = {
         "providers": {
             "anthropic": {"type": "anthropic"},
-            "local": {"type": "openai_compatible", "base_url": "http://x/v1"},
+            "local": {"type": "openai_compatible", "base_url": "http://localhost:11434/v1"},
         },
         "roles": roles,
         "pricing": {"claude-opus-5-5": {"input": 4.0, "output": 20.0}},
@@ -134,10 +141,30 @@ class TestGatewayRouting:
         with pytest.raises(NoRouteAvailable, match="local_only"):
             _gateway(cfg).targets_for(ModelRole.FAST)
 
-    def test_build_providers_from_config(self) -> None:
-        providers = build_providers(_config())
-        assert isinstance(providers["anthropic"], AnthropicProvider)
-        assert isinstance(providers["local"], OpenAICompatibleProvider)
+    def test_build_providers_is_lazy_and_typed(self) -> None:
+        providers = build_providers(_config(), {"local": "sk-test"})
+        assert all(isinstance(p, LazyProvider) for p in providers.values())
+        assert isinstance(providers["local"]._get(), OpenAICompatibleProvider)
+        assert isinstance(providers["anthropic"]._get(), AnthropicProvider)
+
+    def test_make_provider_litellm_missing_extra_is_clear(self) -> None:
+        pc = ProviderConfig(type="litellm")
+        try:
+            import litellm  # noqa: F401
+        except ImportError:
+            with pytest.raises(LLMError, match="extra litellm"):
+                make_provider("x", pc, None)
+
+    def test_one_broken_provider_does_not_break_others(self) -> None:
+        cfg = _config(
+            providers={
+                "anthropic": {"type": "anthropic"},
+                "local": {"type": "openai_compatible", "base_url": "http://localhost:11434/v1"},
+                "broken": {"type": "litellm"},
+            }
+        )
+        providers = build_providers(cfg)
+        assert "broken" in providers  # construction deferred: no error yet
 
     def test_estimate_cost_unknown_model_is_zero(self) -> None:
         assert estimate_cost({"a": Pricing(input=1, output=1)}, "b", Usage(10, 10)) == 0.0
@@ -244,6 +271,51 @@ class TestOpenAICompatibleProvider:
         assert result.value.text == "fixed"
         assert result.usage == Usage(10, 4)  # both calls counted
         assert "invalid" in client.requests[1]["messages"][-1]["content"]
+
+    def test_json_object_mode_puts_schema_in_prompt(self) -> None:
+        client = _FakeOpenAIClient('<think>hmm</think>```json\n{"text": "ok"}\n```')
+        provider = OpenAICompatibleProvider(
+            "local",
+            "http://x/v1",
+            client=client,  # type: ignore[arg-type]
+            structured_mode="json_object",
+        )
+        result = provider.structured(model="m", system="s", user="u", schema=Answer, max_tokens=5)
+        assert result.value.text == "ok"
+        request = client.requests[0]
+        assert request["response_format"] == {"type": "json_object"}
+        assert "OUTPUT FORMAT" in request["messages"][0]["content"]
+
+    def test_reasoning_effort_is_sent_only_when_set(self) -> None:
+        for effort, expected in (("none", "none"), (None, None)):
+            client = _FakeOpenAIClient('{"text": "ok"}')
+            provider = OpenAICompatibleProvider(
+                "local",
+                "http://x/v1",
+                client=client,
+                reasoning_effort=effort,  # type: ignore[arg-type]
+            )
+            provider.structured(model="m", system="s", user="u", schema=Answer, max_tokens=5)
+            assert client.requests[0].get("reasoning_effort") == expected
+
+    def test_prompt_mode_sends_no_response_format(self) -> None:
+        client = _FakeOpenAIClient('{"text": "ok"}')
+        provider = OpenAICompatibleProvider(
+            "local",
+            "http://x/v1",
+            client=client,  # type: ignore[arg-type]
+            structured_mode="prompt",
+        )
+        provider.structured(model="m", system="s", user="u", schema=Answer, max_tokens=5)
+        assert "response_format" not in client.requests[0]
+
+    def test_list_models(self) -> None:
+        client = _FakeOpenAIClient()
+        client.models = SimpleNamespace(
+            list=lambda: [SimpleNamespace(id="b"), SimpleNamespace(id="a")]
+        )
+        provider = OpenAICompatibleProvider("local", "http://x/v1", client=client)  # type: ignore[arg-type]
+        assert provider.list_models() == ["a", "b"]
 
     def test_gives_up_after_repair(self) -> None:
         provider, _ = self._provider("nope", "still nope")

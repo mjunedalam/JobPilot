@@ -16,7 +16,16 @@ Every response uses one envelope:
 | PATCH | `/api/v1/profile` | Update fields (new version) |
 | GET | `/api/v1/profile/versions` | Version history |
 | GET | `/api/v1/profile/missing` | Required fields still empty |
+| POST | `/api/v1/profile/import` | Upload a PDF/DOCX resume (multipart); extracted by the `extraction` role |
+| POST | `/api/v1/profile/qa` | Free-text answers ("30 LPA", "60 days") parsed into typed fields |
 | GET/POST | `/api/v1/answers` | Answer Bank |
+| GET | `/api/v1/llm/presets` | Built-in provider presets |
+| GET/PUT/DELETE | `/api/v1/llm/providers[/{name}]` | List, add/edit (API key write-only), remove providers |
+| GET | `/api/v1/llm/providers/{name}/models` | Live model list from the provider |
+| POST | `/api/v1/llm/providers/{name}/test` | Connectivity check |
+| GET/PUT/DELETE | `/api/v1/llm/routes[/{role}]` | Per-role provider/model/fallbacks; DELETE resets to default |
+| POST | `/api/v1/llm/routes/{role}/try` | Send a tiny request through the role's real route |
+| GET/PUT | `/api/v1/llm/settings[/privacy]` | Privacy mode, settings revision |
 | POST | `/api/v1/system/stop` · `/resume` | Kill switch |
 | GET | `/api/v1/decisions/pending` | Pending HITL decisions (Phase 3) |
 | POST | `/api/v1/decisions/{id}` | Answer a HITL decision (Phase 3) |

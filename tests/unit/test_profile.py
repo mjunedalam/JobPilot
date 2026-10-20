@@ -17,7 +17,9 @@ from jobpilot.agents.profile.repository import (
     normalize_question,
 )
 from jobpilot.agents.profile.schema import (
+    USER_ONLY_FIELDS,
     CandidateProfile,
+    ResumeFacts,
     Skill,
     missing_required_fields,
 )
@@ -190,6 +192,32 @@ class TestExtractorAndAgent:
         assert call["role"] is ModelRole.EXTRACTION
         assert call["user"].startswith('<untrusted_content source="resume">')
         assert call["prompt_version"] == load_prompt("profile_extraction").version != "0"
+
+    def test_extractor_never_takes_salary_notice_or_preferences_from_the_model(self) -> None:
+        # Regression: a local model copied example values into these fields (CTC 0, notice 0,
+        # every work mode), which then looked "filled" and would have reached applications.
+        fabricated = CandidateProfile(
+            full_name="Asha Rao",
+            current_ctc={"amount": 1, "currency": "INR"},
+            expected_ctc={"amount": 1, "currency": "INR"},
+            notice_period_days=0,
+            total_experience_years=5,
+            work_modes=["remote", "hybrid", "onsite"],
+            work_authorization="citizen",
+        )
+        llm = FakeLLM(fabricated)
+        profile = ProfileExtractor(llm).extract("Asha Rao")
+        assert llm.calls[0]["schema"] is ResumeFacts
+        assert profile.full_name == "Asha Rao"
+        for field in USER_ONLY_FIELDS:
+            assert getattr(profile, field) in (None, "", []), field
+        assert {"current_ctc", "notice_period_days", "work_modes"} <= set(
+            missing_required_fields(profile)
+        )
+
+    def test_zero_salary_is_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            CandidateProfile.model_validate({"expected_ctc": {"amount": 0, "currency": "INR"}})
 
     def test_extractor_rejects_empty_text(self) -> None:
         with pytest.raises(ValueError):

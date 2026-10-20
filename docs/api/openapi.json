@@ -3,7 +3,7 @@
   "info": {
     "title": "JobPilot API",
     "summary": "Multi-agent job application assistant with human-in-the-loop controls",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -25,6 +25,78 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/system/stop": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Stop",
+        "operationId": "stop_api_v1_system_stop_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_KillSwitchOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/system/resume": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Resume",
+        "operationId": "resume_api_v1_system_resume_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_KillSwitchOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/profile": {
@@ -75,6 +147,100 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Envelope_CandidateProfile_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/qa": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Answer Questions",
+        "description": "Free-text answers (\"30 LPA\", \"60 days\", \"Pune, Delhi\") parsed into typed fields.",
+        "operationId": "answer_questions_api_v1_profile_qa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileQAIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CandidateProfile_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/import": {
+      "post": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Import Resume",
+        "description": "Extract the profile from a resume with the `extraction` model, through the harness.",
+        "operationId": "import_resume_api_v1_profile_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_resume_api_v1_profile_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ImportResultOut_"
                 }
               }
             }
@@ -219,18 +385,70 @@
         ]
       }
     },
-    "/api/v1/system/stop": {
-      "post": {
+    "/api/v1/llm/presets": {
+      "get": {
         "tags": [
-          "system"
+          "models"
         ],
-        "summary": "Stop",
-        "operationId": "stop_api_v1_system_stop_post",
+        "summary": "Presets",
+        "operationId": "presets_api_v1_llm_presets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_PresetOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/llm/settings": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Get Settings",
+        "operationId": "get_settings_api_v1_llm_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LLMSettingsOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/llm/settings/privacy": {
+      "put": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Set Privacy",
+        "operationId": "set_privacy_api_v1_llm_settings_privacy_put",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StopIn"
+                "$ref": "#/components/schemas/PrivacyIn"
               }
             }
           },
@@ -242,7 +460,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_KillSwitchOut_"
+                  "$ref": "#/components/schemas/Envelope_LLMSettingsOut_"
                 }
               }
             }
@@ -265,20 +483,20 @@
         ]
       }
     },
-    "/api/v1/system/resume": {
-      "post": {
+    "/api/v1/llm/providers": {
+      "get": {
         "tags": [
-          "system"
+          "models"
         ],
-        "summary": "Resume",
-        "operationId": "resume_api_v1_system_resume_post",
+        "summary": "List Providers",
+        "operationId": "list_providers_api_v1_llm_providers_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_KillSwitchOut_"
+                  "$ref": "#/components/schemas/Envelope_list_ProviderOut__"
                 }
               }
             }
@@ -289,6 +507,379 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/llm/providers/{name}": {
+      "put": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Save Provider",
+        "operationId": "save_provider_api_v1_llm_providers__name__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ProviderOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Delete Provider",
+        "operationId": "delete_provider_api_v1_llm_providers__name__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ProviderOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/llm/providers/{name}/models": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Provider Models",
+        "operationId": "provider_models_api_v1_llm_providers__name__models_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ModelListOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/llm/providers/{name}/test": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Test Provider",
+        "operationId": "test_provider_api_v1_llm_providers__name__test_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ProviderTestOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/llm/routes": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List Routes",
+        "operationId": "list_routes_api_v1_llm_routes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_RouteOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/llm/routes/{role}": {
+      "put": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Save Route",
+        "operationId": "save_route_api_v1_llm_routes__role__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ModelRole"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RouteOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Reset Route",
+        "operationId": "reset_route_api_v1_llm_routes__role__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ModelRole"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RouteOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/llm/routes/{role}/try": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Try Role",
+        "description": "Send a tiny structured request through the role's real route and fallbacks.",
+        "operationId": "try_role_api_v1_llm_routes__role__try_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ModelRole"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RoleTrialOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -364,6 +955,33 @@
           "times_used"
         ],
         "title": "AnswerOut"
+      },
+      "Body_import_resume_api_v1_profile_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "PDF or DOCX resume, max 10 MB"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_resume_api_v1_profile_import_post"
       },
       "CandidateProfile": {
         "properties": {
@@ -683,6 +1301,40 @@
         "type": "object",
         "title": "Envelope[HealthOut]"
       },
+      "Envelope_ImportResultOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[ImportResultOut]"
+      },
       "Envelope_KillSwitchOut_": {
         "properties": {
           "success": {
@@ -716,6 +1368,210 @@
         },
         "type": "object",
         "title": "Envelope[KillSwitchOut]"
+      },
+      "Envelope_LLMSettingsOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LLMSettingsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[LLMSettingsOut]"
+      },
+      "Envelope_ModelListOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelListOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[ModelListOut]"
+      },
+      "Envelope_ProviderOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[ProviderOut]"
+      },
+      "Envelope_ProviderTestOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderTestOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[ProviderTestOut]"
+      },
+      "Envelope_RoleTrialOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoleTrialOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[RoleTrialOut]"
+      },
+      "Envelope_RouteOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RouteOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[RouteOut]"
       },
       "Envelope_list_AnswerOut__": {
         "properties": {
@@ -793,6 +1649,44 @@
         "type": "object",
         "title": "Envelope[list[MissingFieldOut]]"
       },
+      "Envelope_list_PresetOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PresetOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[PresetOut]]"
+      },
       "Envelope_list_ProfileVersionOut__": {
         "properties": {
           "success": {
@@ -830,6 +1724,82 @@
         },
         "type": "object",
         "title": "Envelope[list[ProfileVersionOut]]"
+      },
+      "Envelope_list_ProviderOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProviderOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[ProviderOut]]"
+      },
+      "Envelope_list_RouteOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RouteOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[RouteOut]]"
       },
       "ErrorBody": {
         "properties": {
@@ -895,6 +1865,47 @@
         ],
         "title": "HealthOut"
       },
+      "ImportResultOut": {
+        "properties": {
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "resume_label": {
+            "type": "string",
+            "title": "Resume Label"
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/MissingFieldOut"
+            },
+            "type": "array",
+            "title": "Missing"
+          },
+          "usage": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Usage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "resume_label",
+          "missing",
+          "usage"
+        ],
+        "title": "ImportResultOut"
+      },
       "KillSwitchOut": {
         "properties": {
           "engaged": {
@@ -912,6 +1923,28 @@
           "reason"
         ],
         "title": "KillSwitchOut"
+      },
+      "LLMSettingsOut": {
+        "properties": {
+          "privacy_mode": {
+            "$ref": "#/components/schemas/PrivacyMode"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "vault_ready": {
+            "type": "boolean",
+            "title": "Vault Ready"
+          }
+        },
+        "type": "object",
+        "required": [
+          "privacy_mode",
+          "revision",
+          "vault_ready"
+        ],
+        "title": "LLMSettingsOut"
       },
       "Links": {
         "properties": {
@@ -999,6 +2032,59 @@
         ],
         "title": "MissingFieldOut"
       },
+      "ModelListOut": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "models"
+        ],
+        "title": "ModelListOut"
+      },
+      "ModelRole": {
+        "type": "string",
+        "enum": [
+          "reasoning",
+          "extraction",
+          "writing",
+          "fast",
+          "router",
+          "judge"
+        ],
+        "title": "ModelRole",
+        "description": "What a call is for. Agents ask for a role; config decides the vendor and model."
+      },
+      "ModelTarget": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "ModelTarget"
+      },
       "Money": {
         "properties": {
           "amount": {
@@ -1022,6 +2108,119 @@
         ],
         "title": "Money"
       },
+      "PresetOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "openai_compatible",
+              "litellm"
+            ],
+            "title": "Type"
+          },
+          "base_url": {
+            "type": "string",
+            "title": "Base Url"
+          },
+          "api_key_env": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Env"
+          },
+          "is_local": {
+            "type": "boolean",
+            "title": "Is Local"
+          },
+          "open_source": {
+            "type": "boolean",
+            "title": "Open Source"
+          },
+          "structured_mode": {
+            "type": "string",
+            "enum": [
+              "json_schema",
+              "json_object",
+              "prompt"
+            ],
+            "title": "Structured Mode"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          },
+          "model_hint": {
+            "type": "string",
+            "title": "Model Hint"
+          },
+          "docs_url": {
+            "type": "string",
+            "title": "Docs Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "type",
+          "base_url",
+          "api_key_env",
+          "is_local",
+          "open_source",
+          "structured_mode",
+          "reasoning_effort",
+          "model_hint",
+          "docs_url"
+        ],
+        "title": "PresetOut"
+      },
+      "PrivacyIn": {
+        "properties": {
+          "privacy_mode": {
+            "$ref": "#/components/schemas/PrivacyMode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "privacy_mode"
+        ],
+        "title": "PrivacyIn"
+      },
+      "PrivacyMode": {
+        "type": "string",
+        "enum": [
+          "standard",
+          "local_only"
+        ],
+        "title": "PrivacyMode"
+      },
       "ProfilePatchIn": {
         "properties": {
           "fields": {
@@ -1037,6 +2236,24 @@
           "fields"
         ],
         "title": "ProfilePatchIn"
+      },
+      "ProfileQAIn": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "minProperties": 1,
+            "title": "Answers",
+            "description": "Field name to free-text answer, e.g. '30 LPA', 'Pune, Delhi'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "title": "ProfileQAIn"
       },
       "ProfileVersionOut": {
         "properties": {
@@ -1071,6 +2288,291 @@
           "created_at"
         ],
         "title": "ProfileVersionOut"
+      },
+      "ProviderIn": {
+        "properties": {
+          "preset": {
+            "type": "string",
+            "title": "Preset",
+            "default": "custom"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "openai_compatible",
+              "litellm"
+            ],
+            "title": "Type"
+          },
+          "base_url": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Base Url",
+            "default": ""
+          },
+          "structured_mode": {
+            "type": "string",
+            "enum": [
+              "json_schema",
+              "json_object",
+              "prompt"
+            ],
+            "title": "Structured Mode",
+            "default": "json_schema"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key",
+            "description": "Write-only; never returned"
+          },
+          "clear_api_key": {
+            "type": "boolean",
+            "title": "Clear Api Key",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "ProviderIn"
+      },
+      "ProviderOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "preset": {
+            "type": "string",
+            "title": "Preset"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "base_url": {
+            "type": "string",
+            "title": "Base Url"
+          },
+          "structured_mode": {
+            "type": "string",
+            "title": "Structured Mode"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Effort"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "has_api_key": {
+            "type": "boolean",
+            "title": "Has Api Key"
+          },
+          "is_local": {
+            "type": "boolean",
+            "title": "Is Local"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "preset",
+          "type",
+          "base_url",
+          "structured_mode",
+          "reasoning_effort",
+          "enabled",
+          "has_api_key",
+          "is_local",
+          "source"
+        ],
+        "title": "ProviderOut"
+      },
+      "ProviderTestOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "models_found": {
+            "type": "integer",
+            "title": "Models Found"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "latency_ms",
+          "models_found"
+        ],
+        "title": "ProviderTestOut"
+      },
+      "RoleTrialOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider",
+            "default": ""
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": ""
+          },
+          "reply": {
+            "type": "string",
+            "title": "Reply",
+            "default": ""
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens",
+            "default": 0
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens",
+            "default": 0
+          },
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "latency_ms"
+        ],
+        "title": "RoleTrialOut"
+      },
+      "RouteIn": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Model"
+          },
+          "fallbacks": {
+            "items": {
+              "$ref": "#/components/schemas/ModelTarget"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Fallbacks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "RouteIn"
+      },
+      "RouteOut": {
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/ModelRole"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "fallbacks": {
+            "items": {
+              "$ref": "#/components/schemas/ModelTarget"
+            },
+            "type": "array",
+            "title": "Fallbacks"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "provider",
+          "model",
+          "fallbacks",
+          "source"
+        ],
+        "title": "RouteOut"
       },
       "Skill": {
         "properties": {

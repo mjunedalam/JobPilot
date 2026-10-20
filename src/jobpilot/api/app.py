@@ -1,92 +1,57 @@
-"""FastAPI application. OpenAPI 3.1 spec at /api/v1/openapi.json, docs at /api/v1/docs."""
+"""FastAPI application. OpenAPI 3.1 spec at /api/v1/openapi.json, docs at /api/v1/docs.
+
+When the web UI has been built (web/dist), it is served at / from the same origin."""
 
 from __future__ import annotations
 
 import logging
-import secrets
 import uuid
-from collections.abc import Iterator
-from typing import Annotated
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from jobpilot.agents.profile.agent import ProfileAgent
-from jobpilot.agents.profile.repository import AnswerBank, ProfileRepository
-from jobpilot.agents.profile.schema import CandidateProfile
-from jobpilot.api.envelope import Envelope, fail, ok
-from jobpilot.api.schemas import (
-    AnswerIn,
-    AnswerOut,
-    HealthOut,
-    KillSwitchOut,
-    MissingFieldOut,
-    ProfilePatchIn,
-    ProfileVersionOut,
-    StopIn,
-)
+from jobpilot.api.envelope import fail
+from jobpilot.api.routes import answers, llm, profile, system
 from jobpilot.core.context import AppContext
-from jobpilot.core.db import session_scope
 from jobpilot.core.killswitch import KillSwitchEngaged
-from jobpilot.observability.tracing import NoopTracer
 
 log = logging.getLogger(__name__)
 API_PREFIX = "/api/v1"
-_bearer = HTTPBearer(auto_error=False)
+WEB_DIST = Path(__file__).resolve().parents[3] / "web" / "dist"
 
 
-def get_ctx(request: Request) -> AppContext:
-    return request.app.state.ctx
-
-
-def get_session(ctx: Annotated[AppContext, Depends(get_ctx)]) -> Iterator[Session]:
-    with session_scope(ctx.sessions) as session:
-        yield session
-
-
-def require_token(
-    ctx: Annotated[AppContext, Depends(get_ctx)],
-    creds: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-) -> None:
-    expected = ctx.settings.jobpilot_api_token
-    if not expected:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "JOBPILOT_API_TOKEN is not set")
-    if creds is None or not secrets.compare_digest(creds.credentials, expected):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid or missing bearer token")
-
-
-def get_request_id(request: Request) -> str:
-    return request.state.request_id
-
-
-DbSession = Annotated[Session, Depends(get_session)]
-RequestId = Annotated[str, Depends(get_request_id)]
-AUTH = [Depends(require_token)]
-
-
-def create_app(ctx: AppContext) -> FastAPI:
+def create_app(ctx: AppContext, web_dist: Path | None = WEB_DIST) -> FastAPI:
     app = FastAPI(
         title="JobPilot API",
-        version="0.1.0",
+        version="0.2.0",
         summary="Multi-agent job application assistant with human-in-the-loop controls",
         openapi_url=f"{API_PREFIX}/openapi.json",
         docs_url=f"{API_PREFIX}/docs",
         redoc_url=None,
     )
     app.state.ctx = ctx
-    auth = AUTH
+    for module in (system, profile, answers, llm):
+        app.include_router(module.router, prefix=API_PREFIX)
+    _register_error_handlers(app)
 
     @app.middleware("http")
     async def add_request_id(request: Request, call_next):  # noqa: ANN001, ANN202
         request.state.request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
         response = await call_next(request)
         response.headers["x-request-id"] = request.state.request_id
+        response.headers["x-content-type-options"] = "nosniff"
+        response.headers["referrer-policy"] = "no-referrer"
         return response
 
+    if web_dist is not None and (web_dist / "index.html").is_file():
+        _mount_ui(app, web_dist)
+    return app
+
+
+def _register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException) -> JSONResponse:
         return JSONResponse(
@@ -96,13 +61,11 @@ def create_app(ctx: AppContext) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        first = exc.errors()[0] if exc.errors() else {}
+        where = ".".join(str(p) for p in first.get("loc", ())[1:])
+        message = f"{where}: {first.get('msg', 'invalid')}" if where else "invalid request"
         return JSONResponse(
-            fail(
-                "validation_error",
-                f"{len(exc.errors())} invalid field(s)",
-                request.state.request_id,
-            ),
-            status_code=422,
+            fail("validation_error", message, request.state.request_id), status_code=422
         )
 
     @app.exception_handler(KillSwitchEngaged)
@@ -119,120 +82,17 @@ def create_app(ctx: AppContext) -> FastAPI:
             fail("internal_error", "unexpected error", request.state.request_id), status_code=500
         )
 
-    @app.get(f"{API_PREFIX}/health", response_model=Envelope[HealthOut], tags=["system"])
-    def health(session: DbSession, rid: RequestId) -> Envelope[HealthOut]:
-        session.execute(text("SELECT 1"))
-        tracing = "noop" if isinstance(ctx.tracer, NoopTracer) else "langfuse"
-        return ok(
-            HealthOut(
-                status="ok",
-                database="ok",
-                kill_switch_engaged=ctx.kill_switch.engaged,
-                llm_privacy_mode=ctx.config.llm.privacy_mode.value,
-                tracing=tracing,
-            ),
-            rid,
-        )
 
-    @app.get(
-        f"{API_PREFIX}/profile",
-        response_model=Envelope[CandidateProfile],
-        tags=["profile"],
-        dependencies=auth,
-    )
-    def get_profile(session: DbSession, rid: RequestId) -> Envelope[CandidateProfile]:
-        return ok(ProfileRepository(session).current(), rid)
+def _mount_ui(app: FastAPI, web_dist: Path) -> None:
+    app.mount("/assets", StaticFiles(directory=web_dist / "assets"), name="assets")
+    index = web_dist / "index.html"
 
-    @app.patch(
-        f"{API_PREFIX}/profile",
-        response_model=Envelope[CandidateProfile],
-        tags=["profile"],
-        dependencies=auth,
-    )
-    def patch_profile(
-        body: ProfilePatchIn, session: DbSession, rid: RequestId
-    ) -> Envelope[CandidateProfile]:
-        ctx.kill_switch.check()
-        try:
-            updated = ProfileAgent(session, ctx.resume_dir).update(body.fields, source="api")
-        except ValueError as exc:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
-        return ok(updated, rid)
-
-    @app.get(
-        f"{API_PREFIX}/profile/versions",
-        response_model=Envelope[list[ProfileVersionOut]],
-        tags=["profile"],
-        dependencies=auth,
-    )
-    def profile_versions(session: DbSession, rid: RequestId) -> Envelope[list[ProfileVersionOut]]:
-        rows = ProfileRepository(session).history()
-        data = [
-            ProfileVersionOut(
-                version=r.version,
-                source=r.source,
-                change_summary=r.change_summary,
-                is_current=r.is_current,
-                created_at=r.created_at,
-            )
-            for r in rows
-        ]
-        return ok(data, rid, total=len(data))
-
-    @app.get(
-        f"{API_PREFIX}/profile/missing",
-        response_model=Envelope[list[MissingFieldOut]],
-        tags=["profile"],
-        dependencies=auth,
-    )
-    def profile_missing(session: DbSession, rid: RequestId) -> Envelope[list[MissingFieldOut]]:
-        missing = ProfileAgent(session, ctx.resume_dir).missing_fields()
-        return ok([MissingFieldOut(field=f, question=q) for f, q in missing.items()], rid)
-
-    @app.get(
-        f"{API_PREFIX}/answers",
-        response_model=Envelope[list[AnswerOut]],
-        tags=["answers"],
-        dependencies=auth,
-    )
-    def list_answers(session: DbSession, rid: RequestId) -> Envelope[list[AnswerOut]]:
-        data = [
-            AnswerOut.model_validate(e, from_attributes=True) for e in AnswerBank(session).all()
-        ]
-        return ok(data, rid, total=len(data))
-
-    @app.post(
-        f"{API_PREFIX}/answers",
-        response_model=Envelope[AnswerOut],
-        status_code=201,
-        tags=["answers"],
-        dependencies=auth,
-    )
-    def add_answer(body: AnswerIn, session: DbSession, rid: RequestId) -> Envelope[AnswerOut]:
-        ctx.kill_switch.check()
-        entry = AnswerBank(session).upsert(
-            body.question, body.answer, confirmed=True, tags=body.tags
-        )
-        return ok(AnswerOut.model_validate(entry, from_attributes=True), rid)
-
-    @app.post(
-        f"{API_PREFIX}/system/stop",
-        response_model=Envelope[KillSwitchOut],
-        tags=["system"],
-        dependencies=auth,
-    )
-    def stop(body: StopIn, rid: RequestId) -> Envelope[KillSwitchOut]:
-        ctx.kill_switch.engage(body.reason)
-        return ok(KillSwitchOut(engaged=True, reason=ctx.kill_switch.reason()), rid)
-
-    @app.post(
-        f"{API_PREFIX}/system/resume",
-        response_model=Envelope[KillSwitchOut],
-        tags=["system"],
-        dependencies=auth,
-    )
-    def resume(rid: RequestId) -> Envelope[KillSwitchOut]:
-        ctx.kill_switch.release()
-        return ok(KillSwitchOut(engaged=False, reason=""), rid)
-
-    return app
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str) -> FileResponse:
+        # Client-side routes fall back to index.html; real files are served if present.
+        if path.startswith("api/"):
+            raise HTTPException(404, "not found")
+        candidate = (web_dist / path).resolve()
+        if path and candidate.is_file() and candidate.is_relative_to(web_dist.resolve()):
+            return FileResponse(candidate)
+        return FileResponse(index)

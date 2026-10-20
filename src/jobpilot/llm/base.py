@@ -56,6 +56,8 @@ class LLMProvider(Protocol):
         self, *, model: str, system: str, user: str, schema: type[T], max_tokens: int
     ) -> StructuredResult[T]: ...
 
+    def list_models(self) -> list[str]: ...
+
 
 class SupportsStructured(Protocol):
     """What agents depend on: the gateway, or the harness wrapping it with budgets."""

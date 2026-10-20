@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Mapping
 
 from pydantic import BaseModel
@@ -14,7 +15,14 @@ from tenacity import (
 )
 from tenacity.wait import WaitBaseT
 
-from jobpilot.core.config import LLMConfig, ModelRole, ModelTarget, Pricing, PrivacyMode
+from jobpilot.core.config import (
+    LLMConfig,
+    ModelRole,
+    ModelTarget,
+    Pricing,
+    PrivacyMode,
+    ProviderConfig,
+)
 from jobpilot.llm.anthropic_provider import AnthropicProvider
 from jobpilot.llm.base import (
     LLMError,
@@ -38,18 +46,59 @@ class NoRouteAvailable(LLMError):
     pass
 
 
-def build_providers(config: LLMConfig) -> dict[str, LLMProvider]:
-    providers: dict[str, LLMProvider] = {}
-    for name, pc in config.providers.items():
-        if pc.type == "anthropic":
-            providers[name] = AnthropicProvider(name=name, timeout_s=pc.timeout_s)
-        else:
+def make_provider(name: str, pc: ProviderConfig, api_key: str | None) -> LLMProvider:
+    key = api_key or (os.environ.get(pc.api_key_env) if pc.api_key_env else None)
+    match pc.type:
+        case "anthropic":
+            return AnthropicProvider(name=name, timeout_s=pc.timeout_s, api_key=key)
+        case "litellm":
+            from jobpilot.llm.litellm_provider import LiteLLMProvider
+
+            return LiteLLMProvider(name, api_key=key, base_url=pc.base_url, timeout_s=pc.timeout_s)
+        case _:
             if not pc.base_url:
                 raise LLMError(f"provider '{name}' needs base_url")
-            providers[name] = OpenAICompatibleProvider(
-                name=name, base_url=pc.base_url, api_key_env=pc.api_key_env, timeout_s=pc.timeout_s
+            return OpenAICompatibleProvider(
+                name=name,
+                base_url=pc.base_url,
+                api_key=key,
+                timeout_s=pc.timeout_s,
+                structured_mode=pc.structured_mode,
+                reasoning_effort=pc.reasoning_effort,
             )
-    return providers
+
+
+class LazyProvider:
+    """Builds the real client on first use, so one misconfigured provider (e.g. LiteLLM not
+    installed) does not stop the others from working."""
+
+    def __init__(self, name: str, pc: ProviderConfig, api_key: str | None) -> None:
+        self.name = name
+        self._pc = pc
+        self._key = api_key
+        self._inner: LLMProvider | None = None
+
+    def _get(self) -> LLMProvider:
+        if self._inner is None:
+            self._inner = make_provider(self.name, self._pc, self._key)
+        return self._inner
+
+    def structured[T: BaseModel](
+        self, *, model: str, system: str, user: str, schema: type[T], max_tokens: int
+    ) -> StructuredResult[T]:
+        return self._get().structured(
+            model=model, system=system, user=user, schema=schema, max_tokens=max_tokens
+        )
+
+    def list_models(self) -> list[str]:
+        return self._get().list_models()
+
+
+def build_providers(
+    config: LLMConfig, api_keys: Mapping[str, str] | None = None
+) -> dict[str, LLMProvider]:
+    keys = api_keys or {}
+    return {name: LazyProvider(name, pc, keys.get(name)) for name, pc in config.providers.items()}
 
 
 def estimate_cost(pricing: Mapping[str, Pricing], model: str, usage: Usage) -> float:
@@ -78,13 +127,19 @@ class LLMGateway:
         route = self._config.roles[role]
         chain = [ModelTarget(provider=route.provider, model=route.model), *route.fallbacks]
         if self._config.privacy_mode is PrivacyMode.LOCAL_ONLY:
-            chain = [t for t in chain if t.provider == self._config.local_provider]
+            chain = [t for t in chain if self._config.is_local_provider(t.provider)]
             if not chain:
                 raise NoRouteAvailable(
-                    f"privacy_mode=local_only but role '{role}' has no "
-                    f"'{self._config.local_provider}' target in its route or fallbacks"
+                    f"privacy_mode=local_only but role '{role}' has no local provider "
+                    "(localhost or private network) in its route or fallbacks"
                 )
         return chain
+
+    def provider(self, name: str) -> LLMProvider:
+        try:
+            return self._providers[name]
+        except KeyError:
+            raise NoRouteAvailable(f"provider '{name}' is not configured") from None
 
     def structured[T: BaseModel](
         self,
