@@ -96,6 +96,8 @@ class Job(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     dedup_key: Mapped[str] = mapped_column(String(300), unique=True, index=True)
+    # normalised company|location. Postings in one bucket with similar titles are one job.
+    dedup_bucket: Mapped[str] = mapped_column(String(300), default="", index=True)
     title: Mapped[str] = mapped_column(String(300))
     company: Mapped[str] = mapped_column(String(300), index=True)
     location: Mapped[str] = mapped_column(String(300), default="")
@@ -104,6 +106,7 @@ class Job(Base):
     experience_max: Mapped[float | None] = mapped_column(Float, nullable=True)
     salary_min: Mapped[float | None] = mapped_column(Float, nullable=True)
     salary_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+    salary_currency: Mapped[str] = mapped_column(String(3), default="")
     description: Mapped[str] = mapped_column(Text, default="")
     skills: Mapped[list[str]] = mapped_column(default=list)
     portals: Mapped[list[str]] = mapped_column(default=list)
