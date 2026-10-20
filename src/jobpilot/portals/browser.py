@@ -2,7 +2,12 @@
 
 One context per portal, restored from the encrypted session in the vault. Pages are fetched with
 randomised, human-paced delays. There is no user-agent spoofing, fingerprint masking, proxy
-rotation or CAPTCHA solving: when a portal pushes back, JobPilot stops and asks the user."""
+rotation or CAPTCHA solving: when a portal pushes back, JobPilot stops and asks the user.
+
+Network safety: all browser traffic goes through `EgressProxy`, which connects only to vetted
+public IPs. That covers navigations, every redirect hop, subresources, WebSockets and DNS
+rebinding. Service workers are blocked, QUIC is disabled, and WebRTC is limited to the proxy.
+"""
 
 from __future__ import annotations
 
@@ -11,13 +16,18 @@ import random
 import time
 from datetime import UTC, datetime
 from typing import Any, Protocol, cast
-from urllib.parse import urlparse
 
 from jobpilot.core.net import NonPublicURL, check_public_http_url
 from jobpilot.portals.base import FetchedPage
+from jobpilot.portals.egress import EgressProxy
 
 NAV_TIMEOUT_MS = 45_000
 SETTLE_MS = 4_000
+CHROMIUM_ARGS = (
+    "--proxy-bypass-list=<-loopback>",  # by default Chromium sends localhost around the proxy
+    "--disable-quic",  # QUIC (UDP) cannot go through an HTTP proxy
+    "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+)
 
 
 class PageFetcher(Protocol):
@@ -34,6 +44,16 @@ class PageFetcher(Protocol):
     def close(self) -> None: ...
 
 
+def obviously_local(url: str) -> bool:
+    """Cheap first-layer check with no DNS lookup and no cached verdicts. Hostnames are vetted
+    by the egress proxy at connect time, against the address it actually connects to."""
+    try:
+        check_public_http_url(url, resolve=False)
+    except NonPublicURL:
+        return True
+    return False
+
+
 class PlaywrightFetcher:
     def __init__(
         self,
@@ -48,17 +68,38 @@ class PlaywrightFetcher:
             from playwright.sync_api import sync_playwright
         except ImportError as exc:
             raise RuntimeError("Playwright is not installed: uv sync --extra browser") from exc
+        self._proxy = EgressProxy().start()
         self._pw = sync_playwright().start()
-        self._browser = self._pw.chromium.launch(channel=channel, headless=not headed)
-        self._context = self._browser.new_context(storage_state=cast(Any, storage_state))
-        # Every request (navigations, redirects, images, XHR) must go to a public host, so a
-        # page cannot steer the browser into the local network or a metadata service.
+        self._browser = self._pw.chromium.launch(
+            channel=channel,
+            headless=not headed,
+            proxy={"server": self._proxy.url},
+            args=list(CHROMIUM_ARGS),
+        )
+        self._context = self._browser.new_context(
+            storage_state=cast(Any, storage_state), service_workers="block"
+        )
         self._context.route("**/*", self._guard_request)
-        self._public_hosts: dict[str, bool] = {}
+        self._context.route_web_socket("**/*", self._guard_websocket)
         self._page = self._context.new_page()
         self._min, self._max = min_delay_s, max_delay_s
         self._last_nav: float | None = None
         self._status = 200
+
+    @staticmethod
+    def _guard_request(route: Any) -> None:
+        url = route.request.url
+        if url.startswith(("data:", "blob:", "about:")) or not obviously_local(url):
+            route.continue_()
+        else:
+            route.abort("blockedbyclient")
+
+    @staticmethod
+    def _guard_websocket(ws: Any) -> None:
+        if obviously_local(ws.url.replace("ws", "http", 1)):
+            ws.close(code=1008, reason="blocked by JobPilot")
+        else:
+            ws.connect_to_server()
 
     def _pace(self) -> None:
         if self._last_nav is not None:
@@ -67,29 +108,12 @@ class PlaywrightFetcher:
                 time.sleep(wait)
         self._last_nav = time.monotonic()
 
-    def _is_public(self, url: str) -> bool:
-        host = urlparse(url).hostname or ""
-        if host not in self._public_hosts:
-            try:
-                check_public_http_url(url)
-                self._public_hosts[host] = True
-            except NonPublicURL:
-                self._public_hosts[host] = False
-        return self._public_hosts[host]
-
-    def _guard_request(self, route: Any) -> None:
-        url = route.request.url
-        if url.startswith(("data:", "blob:", "about:")) or self._is_public(url):
-            route.continue_()
-        else:
-            route.abort("blockedbyclient")
-
     def fetch(self, url: str) -> FetchedPage:
         check_public_http_url(url)
         self._pace()
         response = self._page.goto(url, wait_until="domcontentloaded", timeout=NAV_TIMEOUT_MS)
         self._status = response.status if response is not None else 0
-        if not self._is_public(self._page.url):
+        if obviously_local(self._page.url):
             raise NonPublicURL(f"navigation ended on a non-public address: {self._page.url}")
         # Busy pages never go idle; the DOM is already loaded, so a timeout here is fine.
         with contextlib.suppress(Exception):
@@ -114,6 +138,6 @@ class PlaywrightFetcher:
         return dict(self._context.storage_state())
 
     def close(self) -> None:
-        for closer in (self._context.close, self._browser.close, self._pw.stop):
+        for closer in (self._context.close, self._browser.close, self._pw.stop, self._proxy.stop):
             with contextlib.suppress(Exception):  # best-effort shutdown
                 closer()

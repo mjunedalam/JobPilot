@@ -8,6 +8,7 @@ circuit breaker → timeout + retry → output schema + guardrails → audit + t
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
@@ -242,7 +243,14 @@ class AgentHarness:
 
     def _with_timeout(self, tool: Tool, parsed: BaseModel) -> BaseModel:
         if tool.inline:
-            return tool.fn(parsed)
+            # Inline tools cannot be pre-empted, so they must bound their own work (portal
+            # tools: 45 s per navigation, provider timeouts on LLM calls). The deadline is still
+            # enforced here: an overrun counts as a timeout for retries and the circuit breaker.
+            started = time.monotonic()
+            result = tool.fn(parsed)
+            if time.monotonic() - started > tool.timeout_s:
+                raise ToolTimeout(f"{tool.name} exceeded {tool.timeout_s}s")
+            return result
         pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"tool-{tool.name}")
         future = pool.submit(tool.fn, parsed)
         try:

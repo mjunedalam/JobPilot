@@ -48,7 +48,7 @@ class NonPublicURL(ValueError):
     pass
 
 
-def _ip_is_public(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+def is_public_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return not (
         ip.is_private
         or ip.is_loopback
@@ -70,7 +70,7 @@ def check_public_http_url(url: str, *, resolve: bool = True) -> None:
     if host == "localhost" or host.endswith(".localhost") or host in _METADATA_HOSTS:
         raise NonPublicURL(f"{host} is not a public address")
     try:
-        if not _ip_is_public(ipaddress.ip_address(host)):
+        if not is_public_ip(ipaddress.ip_address(host)):
             raise NonPublicURL(f"{host} is not a public address")
         return
     except ValueError as exc:
@@ -84,5 +84,5 @@ def check_public_http_url(url: str, *, resolve: bool = True) -> None:
         raise NonPublicURL(f"could not resolve {host}") from exc
     for info in infos:
         address = str(info[4][0])
-        if not _ip_is_public(ipaddress.ip_address(address.split("%")[0])):
+        if not is_public_ip(ipaddress.ip_address(address.split("%")[0])):
             raise NonPublicURL(f"{host} resolves to a non-public address")

@@ -31,16 +31,17 @@ def _adapters(ctx, sources: list[str]) -> list[PortalAdapter]:  # noqa: ANN001
         enabled = PortalSettings(session, ctx.config.portals).enabled()
     adapters = []
     for source in sources:
-        name = source.strip().casefold()
-        if name in KNOWN and name not in enabled:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"enable {KNOWN[name].label} first (and accept its terms note)",
-            )
         try:
-            adapters.append(resolve(source, ctx.gateway))
+            adapter = resolve(source, ctx.gateway)
         except ValueError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+        # Gate on what will actually run: a full portal URL resolves to that portal's adapter.
+        if adapter.name in KNOWN and adapter.name not in enabled:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"enable {adapter.label} first (and accept its terms note)",
+            )
+        adapters.append(adapter)
     return adapters
 
 

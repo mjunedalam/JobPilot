@@ -180,6 +180,9 @@ web/                React + TypeScript UI (pages, typed API client, tests)
 - OAuth uses least-privilege scopes (read, draft, send); tokens can be refreshed and revoked.
 - No CAPTCHA solving, no bot-detection evasion, no proxy rotation, no fake accounts. CAPTCHA and 2FA always go to you (H1).
 - Untrusted text (resumes, job pages, emails) is fenced before it reaches a model and never gets tool authority.
+- The automated browser can reach only public internet addresses: all of its traffic (redirects,
+  subresources, WebSockets) goes through a local egress proxy that vets each connection's IP and
+  connects to that exact address. Service workers are blocked and QUIC is disabled.
 - The REST API binds to `127.0.0.1` and requires a bearer token.
 - `jobpilot stop`, `POST /api/v1/system/stop`, or "stop everything" in chat halts every agent before its next step.
 

@@ -221,3 +221,13 @@ def test_import_refuses_private_network_url(client: TestClient) -> None:
         "/api/v1/jobs/import", headers=AUTH, json={"url": "http://192.168.1.1/jobs"}
     )
     assert response.status_code == 400 and "public" in response.json()["error"]["message"]
+
+
+def test_full_portal_url_cannot_bypass_disabled_portal(client: TestClient) -> None:
+    # Regression: the gate compared the input string, so a Naukri URL slipped past it.
+    response = client.post(
+        "/api/v1/search",
+        headers=AUTH,
+        json={"recency": {"preset": "7d"}, "sources": ["https://www.naukri.com/python-jobs"]},
+    )
+    assert response.status_code == 400 and "enable Naukri" in response.json()["error"]["message"]

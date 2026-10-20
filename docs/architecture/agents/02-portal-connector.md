@@ -55,3 +55,17 @@ Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist,
 - Email OTP uses the `OtpSource` interface, implemented by the Email Monitor in Phase 4; until then
   OTP sign-ins fall back to manual.
 - Sessions (Playwright storage state) and credentials are Fernet-encrypted; sessions expire after 14 days.
+
+## Network egress
+
+The browser cannot be used to reach your local network or a cloud metadata service:
+
+- Every connection goes through `EgressProxy` (127.0.0.1, random port). It resolves each host
+  once, refuses it if any resolved address is not public, and connects to the vetted IP itself,
+  so DNS rebinding has nothing to swap. Redirect hops, subresources, XHR and WebSockets are covered.
+- Chromium flags: loopback is not bypassed, QUIC is disabled, WebRTC uses proxied UDP only.
+  Service workers are blocked.
+- Import URLs and the final URL after navigation are also checked.
+
+Verified live: requests to a local server through a hostname resolving to 127.0.0.1, the raw IP,
+`localhost` and an `<img>` tag all failed to reach it, while public pages loaded normally.

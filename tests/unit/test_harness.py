@@ -350,3 +350,21 @@ class TestInlineTools:
         tool = Tool(name="boom", description="", input_model=EchoIn, output_model=EchoOut, fn=boom)
         with pytest.raises(ToolFailed, match="KeyError: 'missing selector a.title'"):
             make_harness(ToolRegistry([tool]), {"boom"}).call_tool("boom", {"text": "a"})
+
+
+def test_inline_tool_overrun_is_a_timeout(make_harness) -> None:
+    def slow(args: EchoIn) -> EchoOut:
+        time.sleep(0.05)
+        return EchoOut(text=args.text)
+
+    tool = Tool(
+        name="slow",
+        description="",
+        input_model=EchoIn,
+        output_model=EchoOut,
+        fn=slow,
+        inline=True,
+        timeout_s=0.01,
+    )
+    with pytest.raises(ToolTimeout):
+        make_harness(ToolRegistry([tool]), {"slow"}).call_tool("slow", {"text": "a"})
