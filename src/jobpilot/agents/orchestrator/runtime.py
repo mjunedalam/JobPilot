@@ -14,11 +14,11 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
-from sqlalchemy import select
+from sqlalchemy import CursorResult, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from jobpilot.core.db import session_scope
@@ -27,6 +27,7 @@ from jobpilot.core.models import WorkflowRun
 
 log = logging.getLogger(__name__)
 GraphFactory = Callable[[Any], Any]  # checkpointer -> compiled graph
+STALE = "that decision is no longer pending (refresh and try again)"
 
 
 @dataclass(frozen=True)
@@ -114,14 +115,38 @@ class WorkflowRuntime:
             run = s.get(WorkflowRun, thread_id)
             if run is None:
                 raise WorkflowError("no such workflow")
-            if run.status != "waiting":
-                raise WorkflowError(f"workflow is {run.status}, not waiting for a decision")
             kind = run.kind
-        current = [p for p in self.pending() if p.thread_id == thread_id]
-        if not current or current[0].interrupt_id != interrupt_id:
-            raise WorkflowError("that decision is no longer pending (refresh and try again)")
-        self._set(thread_id, "running")
-        return self._worker.submit(self._drive, kind, thread_id, Command(resume=answer))
+        if interrupt_id not in self._interrupt_ids(kind, thread_id):
+            raise WorkflowError(STALE)
+        # Claim the run atomically: of two concurrent answers to the same decision (double
+        # click, two tabs), exactly one moves it from waiting to running; the other is refused.
+        with session_scope(self._sessions) as s:
+            result = s.execute(
+                update(WorkflowRun)
+                .where(WorkflowRun.thread_id == thread_id, WorkflowRun.status == "waiting")
+                .values(status="running", error="")
+            )
+            claimed = cast(CursorResult[Any], result).rowcount
+        if not claimed:
+            raise WorkflowError(STALE)
+        return self._worker.submit(self._drive_resume, kind, thread_id, interrupt_id, answer)
+
+    def _drive_resume(
+        self, kind: str, thread_id: str, interrupt_id: str, answer: dict[str, Any]
+    ) -> None:
+        # Check again on the worker: the decision must still be the one the user answered.
+        if interrupt_id not in self._interrupt_ids(kind, thread_id):
+            log.warning(
+                "decision %s on %s is no longer pending; not resuming", interrupt_id, thread_id
+            )
+            self._set(thread_id, "waiting")
+            return
+        # Bound to that interrupt id, so the answer can never land on a different question.
+        self._drive(kind, thread_id, Command(resume={interrupt_id: answer}))
+
+    def _interrupt_ids(self, kind: str, thread_id: str) -> set[str]:
+        state = self._graphs[kind].get_state(self._cfg(thread_id))
+        return {intr.id for task in state.tasks for intr in task.interrupts}
 
     def recover(self) -> list[str]:
         """After a restart: continue runs that were mid-step when the process stopped. Runs that

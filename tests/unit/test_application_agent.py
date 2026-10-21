@@ -247,3 +247,56 @@ def test_no_apply_button_fails_cleanly(make, sessions, tmp_path) -> None:
     with session_scope(sessions) as s:
         result = agent.attempt(_ctx(s, tmp_path))
     assert result.outcome is Outcome.ALREADY_APPLIED
+
+
+def _approved_preview(make, sessions, tmp_path, overrides):  # noqa: ANN001, ANN202
+    agent, _ = make(PAGES)
+    with session_scope(sessions) as s:
+        preview = agent.attempt(_ctx(s, tmp_path, overrides=overrides))
+    assert preview.outcome is Outcome.NEEDS_PREVIEW
+    with session_scope(sessions) as s:
+        row = log_decision(
+            s,
+            Checkpoint.H5_PRESUBMIT,
+            "submit",
+            approved_content={"job_id": 7, "answers": preview.answers},
+        )
+        return ApprovalToken(Checkpoint.H5_PRESUBMIT, row.id)
+
+
+def test_unconfirmed_submit_is_never_clicked_again(make, sessions, tmp_path) -> None:
+    overrides = {"why": "x"}
+    token = _approved_preview(make, sessions, tmp_path, overrides)
+    no_confirmation = ["posting.html", "step1.html", "step2.html", "step2.html"]
+    agent, browser = make(no_confirmation)
+    with session_scope(sessions) as s:
+        first = agent.attempt(_ctx(s, tmp_path, overrides=overrides, approval=token))
+    assert first.outcome is Outcome.SUBMITTED_UNCONFIRMED and browser.submits == 1
+
+    # A later attempt with the same approval (retry, replay) reuses the recorded submit.
+    agent, browser = make(no_confirmation)
+    with session_scope(sessions) as s:
+        again = agent.attempt(_ctx(s, tmp_path, overrides=overrides, approval=token, attempt=2))
+    assert again.outcome is Outcome.SUBMITTED_UNCONFIRMED and browser.submits == 0
+
+
+def test_submit_error_is_unconfirmed_and_not_retried(make, sessions, tmp_path) -> None:
+    overrides = {"why": "x"}
+    token = _approved_preview(make, sessions, tmp_path, overrides)
+    agent, browser = make(PAGES)
+    original = browser.click
+
+    def click_then_crash(selector: str) -> None:
+        original(selector)
+        if selector == "#submit":
+            raise RuntimeError("connection reset after click")
+
+    browser.click = click_then_crash
+    with session_scope(sessions) as s:
+        first = agent.attempt(_ctx(s, tmp_path, overrides=overrides, approval=token))
+    assert first.outcome is Outcome.SUBMITTED_UNCONFIRMED and browser.submits == 1
+
+    agent, browser = make(PAGES)
+    with session_scope(sessions) as s:
+        again = agent.attempt(_ctx(s, tmp_path, overrides=overrides, approval=token, attempt=2))
+    assert again.outcome is Outcome.SUBMITTED_UNCONFIRMED and browser.submits == 0

@@ -147,6 +147,8 @@ def build_apply_graph(
             return "ask_field"
         if outcome == "needs_preview":
             return "ask_preview"
+        # Only plain failures retry. "submitted_unconfirmed" means the submit click may have
+        # landed; retrying could apply twice, so it goes straight to record for a human.
         if outcome == "failed" and state.get("attempt", 1) < MAX_ATTEMPTS:
             return "retry"
         return "record"

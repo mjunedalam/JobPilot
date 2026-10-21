@@ -275,6 +275,14 @@ class ApplicationService:
                 self._finish(s, job_id, JobStatus.APPLIED)
                 if app is not None:
                     app.submitted_at = self._now()
+            elif result.outcome is Outcome.SUBMITTED_UNCONFIRMED:
+                # Terminal: FAILED never transitions back, so the job is never tried again; the
+                # submit time counts toward the daily cap as if it went through.
+                self._finish(
+                    s, job_id, JobStatus.FAILED, error=f"needs manual check: {result.detail}"
+                )
+                if app is not None:
+                    app.submitted_at = self._now()
             elif result.outcome is Outcome.BLOCKED and result.block is not None:
                 PortalConnector(s, self._vault).mark_blocked(adapter.name, result.block, result.url)
             log_action(

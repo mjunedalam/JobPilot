@@ -200,3 +200,13 @@ def test_reject_all_and_bad_selection(tmp_path: Path) -> None:
 def test_no_candidates_ends_immediately(tmp_path: Path) -> None:
     final = graph(ScriptedService([], {}), tmp_path / "w.db").invoke({}, CFG)
     assert final["results"] == {}
+
+
+def test_unconfirmed_submit_is_not_retried(tmp_path: Path) -> None:
+    svc = ScriptedService([job(1)], {1: [done("submitted_unconfirmed", detail="no confirmation")]})
+    g = graph(svc, tmp_path / "w.db", preview=False)
+    g.invoke({}, CFG)
+    final = g.invoke(Command(resume={"action": "approve", "selection": "1"}), CFG)
+    assert [c[2] for c in svc.calls if c[0] == "attempt"] == [1]
+    assert final["results"]["1"]["status"] == "submitted_unconfirmed"
+    assert final["applied_count"] == 0

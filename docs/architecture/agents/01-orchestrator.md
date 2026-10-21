@@ -45,5 +45,9 @@ Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist,
   one at a time), indexes runs in `workflow_runs`, lists pending decisions, resumes them with
   `Command(resume=...)`, and on startup continues runs interrupted by a crash. The LangGraph
   SQLite checkpointer (`data/workflows.db`) holds the state, so pending decisions survive restarts.
+- Answering is race-free: `resume` claims the run with one conditional update
+  (`waiting` → `running`), so of two concurrent answers (double click, two tabs) only one wins.
+  The answer is bound to its interrupt (`Command(resume={interrupt_id: answer})`), and the worker
+  checks again that the decision is still pending before resuming.
 - An invalid H3 selection is asked again with the reason rather than failing the run; the API
   also validates answers before resuming, and refuses to answer a decision that is no longer pending.

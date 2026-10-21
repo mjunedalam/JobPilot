@@ -29,10 +29,11 @@ flowchart TD
     H5 -- skip --> SKIP
     SUBMIT --> RES2{"Confirmation found?"}
     RES2 -- yes --> PROOF["Screenshot + confirmation text<br/>status = applied"]
-    RES2 -- no --> RETRY{"Retried once?"}
+    RES2 -- no --> UNCONF["status = failed<br/>needs manual check (never resubmitted)"]
+    FORM -- "error before submit" --> RETRY{"Retried once?"}
     RETRY -- no --> OPEN
     RETRY -- yes --> FAIL["status = failed<br/>needs manual action + link"]
-    PROOF & FAIL --> DELAY["Randomised human-like delay"] --> NEXT
+    PROOF & FAIL & UNCONF --> DELAY["Randomised human-like delay"] --> NEXT
     FORM -. "portal warning / block" .-> STOPP["Stop this portal, notify user"]
 ```
 
@@ -64,13 +65,19 @@ one goes to you. Nothing is invented.
 
 **Submitting** is the external tool `apply.submit`. With preview on (default) it needs an H5
 approval whose hash matches `{job_id, answers}`, exactly what the preview showed. With preview off
-it needs the job's H3 approval, bound to `{job_id}`. Each attempt has an idempotency key, so a
-replay never submits twice. The submit button is re-detected on the live page, so the approved
+it needs the job's H3 approval, bound to `{job_id}`. The idempotency key is the approval
+(`apply:{job_id}:{checkpoint}:{audit_id}`), not the attempt, so one approval clicks Submit at most
+once however often the attempt is replayed or retried. The submit button is re-detected on the live page, so the approved
 payload never contains selectors.
 
 **Proof**: a full-page screenshot (`apply.proof`) and the confirmation text.
 
-**Limits**: retry once, then "Failed – needs manual action" with reason and link; daily cap per
+**Unconfirmed submits**: if Submit ran (or may have run: an error mid-click, or an earlier
+pending/failed marker) but no confirmation came back, the outcome is `submitted_unconfirmed`. It
+is never retried, the job goes to `failed` with "needs manual check", and it counts toward the
+daily cap, because a second click could apply twice.
+
+**Limits**: failures before Submit retry once, then "Failed – needs manual action" with reason and link; daily cap per
 portal (default 25, rolling 24 h); randomised gaps between applications; a blocked portal stops
 for the rest of the run while others continue.
 

@@ -141,7 +141,8 @@ On **Approvals**, press **Review found jobs**:
    source and confidence. Tick "save" to reuse the answer next time.
 4. **H5**: you see exactly what will be submitted. Submit, edit (you'll see it again), or skip.
 5. The application is sent only with an approval of that exact content, once, with a screenshot
-   and confirmation text kept as proof. A failure is retried once, then marked for manual action.
+   and confirmation text kept as proof. A failure before submit is retried once, then marked for manual action; a submit
+   without a confirmation is never retried, only flagged for you to check.
 
 Decisions wait for you across restarts. `presubmit_preview: false` skips H5, in which case the H3
 approval authorises submission. Daily cap per portal: 25 (configurable).

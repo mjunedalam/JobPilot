@@ -87,3 +87,51 @@ def test_unknown_workflow_and_thread(sessions, kill_switch, tmp_path) -> None:
         rt.start("nope")
     with pytest.raises(WorkflowError):
         rt.resume("missing", "x", {})
+
+
+def test_concurrent_answers_to_one_decision_resume_once(sessions, kill_switch, tmp_path) -> None:
+    import threading
+
+    svc = ScriptedService([job(1)], {1: [needs_preview(), done()]})
+    rt = runtime(sessions, kill_switch, tmp_path, svc)
+    thread, fut = rt.start("apply")
+    fut.result(timeout=10)
+    [h3] = rt.pending()
+    # Hold both requests right after their "is it still pending?" check, so both pass it
+    # before either claims the run: the window a double click or a second tab could hit.
+    barrier, checked = threading.Barrier(2, timeout=5), rt._interrupt_ids
+    gated = iter([True, True])
+
+    def check_then_wait(kind: str, thread_id: str) -> set[str]:
+        ids = checked(kind, thread_id)
+        if next(gated, False):
+            barrier.wait()
+        return ids
+
+    rt._interrupt_ids = check_then_wait  # type: ignore[method-assign]
+    futures, errors = [], []
+
+    def answer() -> None:
+        try:
+            futures.append(rt.resume(thread, h3.interrupt_id, {"action": "approve"}))
+        except WorkflowError as exc:
+            errors.append(exc)
+
+    workers = [threading.Thread(target=answer) for _ in range(2)]
+    for w in workers:
+        w.start()
+    for w in workers:
+        w.join(timeout=10)
+    for f in futures:
+        f.result(timeout=10)
+    assert len(futures) == 1 and len(errors) == 1
+    assert [c for c in svc.calls if c[0] == "h3"] == [("h3", [1], [1])]
+
+
+def test_resume_rechecks_the_decision_on_the_worker(sessions, kill_switch, tmp_path) -> None:
+    svc = ScriptedService([job(1)], {1: [needs_preview(), done()]})
+    rt = runtime(sessions, kill_switch, tmp_path, svc)
+    thread, fut = rt.start("apply")
+    fut.result(timeout=10)
+    rt._drive_resume("apply", thread, "not-the-pending-id", {"action": "approve"})
+    assert rt.runs()[0].status == "waiting" and not [c for c in svc.calls if c[0] == "h3"]

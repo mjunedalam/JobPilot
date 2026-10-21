@@ -31,7 +31,7 @@ from jobpilot.agents.application.forms import (
 )
 from jobpilot.core.status import Checkpoint
 from jobpilot.harness.approvals import ApprovalToken
-from jobpilot.harness.errors import ApprovalRequired, HarnessError
+from jobpilot.harness.errors import ApprovalRequired, HarnessError, OutcomeUnknown
 from jobpilot.harness.runner import AgentHarness
 from jobpilot.harness.tools import SideEffect, Tool, ToolRegistry
 from jobpilot.portals.base import BlockKind, FetchedPage, PortalAdapter
@@ -45,6 +45,9 @@ class Outcome(StrEnum):
     NEEDS_INPUT = "needs_input"  # H4
     NEEDS_PREVIEW = "needs_preview"  # H5
     SUBMITTED = "submitted"
+    # The submit click ran (or may have run) but no confirmation came back. Never retried:
+    # a second click could apply twice. Recorded for the user to check on the portal.
+    SUBMITTED_UNCONFIRMED = "submitted_unconfirmed"
     FAILED = "failed"
     BLOCKED = "blocked"  # H1: the portal pushed back; stop this portal
     ALREADY_APPLIED = "already_applied"
@@ -281,17 +284,28 @@ class ApplicationAgent:
 
     def _submit(self, h: AgentHarness, ctx: ApplyContext, result: AttemptResult) -> AttemptResult:
         payload = {"job_id": ctx.job_id, "answers": result.answers if ctx.preview else {}}
+        # Keyed on the approval, not the attempt: one approval drives at most one submit click,
+        # however many times the attempt is replayed or retried.
+        approval = ctx.approval
+        key = (
+            f"apply:{ctx.job_id}:{approval.checkpoint.value}:{approval.audit_id}"
+            if approval
+            else ""
+        )
         try:
-            page = h.call_tool(
-                "apply.submit",
-                payload,
-                approval=ctx.approval,
-                idempotency_key=f"apply:{ctx.job_id}:{ctx.attempt}",
-            )
+            page = h.call_tool("apply.submit", payload, approval=approval, idempotency_key=key)
         except ApprovalRequired:
             if not ctx.preview:
                 raise  # without preview the H3 token must already match; never ask silently
             result.outcome, result.detail = Outcome.NEEDS_PREVIEW, "review the filled form"
+            return result
+        except OutcomeUnknown:
+            result.outcome = Outcome.SUBMITTED_UNCONFIRMED
+            result.detail = "an earlier submit may have gone through; check the listing"
+            return result
+        except HarnessError as exc:  # the click may have happened before the error
+            result.outcome = Outcome.SUBMITTED_UNCONFIRMED
+            result.detail = f"submit did not finish ({exc}); check the listing before retrying"
             return result
         assert isinstance(page, _PageOut)
         proof = ctx.proof_dir / f"job-{ctx.job_id}-attempt-{ctx.attempt}.png"
@@ -306,7 +320,7 @@ class ApplicationAgent:
             result.outcome, result.confirmation = Outcome.SUBMITTED, text
             result.detail = "submitted and confirmed"
         else:
-            result.outcome = Outcome.FAILED
+            result.outcome = Outcome.SUBMITTED_UNCONFIRMED
             result.detail = "submitted, but no confirmation was shown; check the listing"
         return result
 
