@@ -40,6 +40,9 @@ class MailMessage:
     # The topmost Authentication-Results header (added by the receiving provider); judged by
     # mail/auth.py against the provider and the From: domain.
     auth_results: str = ""
+    # True when that header sits above a Microsoft delivery hop (a Received "by ….outlook.com"
+    # line below it). A sender's own header can only appear below every such hop.
+    auth_above_ms_hop: bool = False
 
     @property
     def sender_address(self) -> str:

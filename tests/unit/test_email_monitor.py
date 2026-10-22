@@ -339,8 +339,10 @@ def test_auto_status_needs_the_jobs_own_domain_and_provider_dmarc(session) -> No
 def test_authentication_results_parsing() -> None:
     from jobpilot.mail.auth import dmarc_pass
 
-    def ok(header: str, provider: str = "gmail", domain: str = "acme.com") -> bool:
-        return dmarc_pass(header, provider=provider, from_domain=domain)
+    def ok(
+        header: str, provider: str = "gmail", domain: str = "acme.com", hop: bool = True
+    ) -> bool:
+        return dmarc_pass(header, provider=provider, from_domain=domain, above_ms_hop=hop)
 
     assert ok("mx.google.com; dkim=pass; dmarc=pass (p=REJECT) header.from=acme.com")
     assert not ok("evil.example; dmarc=pass header.from=acme.com")  # wrong authserv-id
@@ -354,6 +356,9 @@ def test_authentication_results_parsing() -> None:
         "dmarc=pass action=none header.from=acme.com;compauth=pass"
     )
     assert ok(ms, "outlook")
+    assert not ok(ms, "outlook", hop=False)  # not above a Microsoft hop: could be the sender's
+    two = "mx.google.com; dmarc=pass header.from=acme.com; dmarc=fail header.from=acme.com"
+    assert not ok(two)  # ambiguous: more than one DMARC result
     assert not ok("mx.google.com; dmarc=pass header.from=acme.com", "outlook")  # not Microsoft's
     assert not ok(ms, "local") and not ok("", "gmail")
 
@@ -372,3 +377,30 @@ def test_future_dated_mail_cannot_push_the_cursor_ahead(setup, sessions, tmp_pat
     monitor, _ = make(FakeLLM(EmailTriage(job_related=True, category="rejection")))
     monitor.poll()
     assert ids["cursor"][0] <= datetime.now(UTC)
+
+
+def test_header_position_and_public_suffix_domains() -> None:
+    from jobpilot.agents.email.rules import company_domains, registrable_domain
+
+    raw = (FIX / "interview.eml").read_bytes()
+    ms = b"spf=pass smtp.mailfrom=acme-payments.com; dmarc=pass header.from=acme-payments.com"
+    stamped = (
+        b"Received: from x by AM0PR01MB1.eurprd01.prod.outlook.com; Wed, 21 Oct 2026\n"
+        b"Authentication-Results: " + ms + b"\n"
+        b"Received: from mail.acme-payments.com by DB5EUR01FT001.mail.protection.outlook.com;"
+        b" Wed, 21 Oct 2026\n"
+    )
+    assert parse_rfc822(stamped + raw, message_id="m").auth_above_ms_hop is True
+    forged = b"Authentication-Results: " + ms + b"\n"  # in the sender's own headers: no hop below
+    assert parse_rfc822(forged + raw, message_id="m").auth_above_ms_hop is False
+
+    assert registrable_domain("careers.acme.co.in") == "acme.co.in"
+    assert registrable_domain("acme.github.io") == "acme.github.io"  # PSL private suffix
+    assert company_domains(
+        [
+            "https://careers.acme.com/1",
+            "https://www.naukri.com/j/1",
+            "https://sites.google.com/x",
+            "https://acme.github.io/jobs",
+        ]
+    ) == {"acme.com", "acme.github.io"}  # portals and shared platforms never count

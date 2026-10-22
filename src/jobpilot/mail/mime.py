@@ -49,6 +49,19 @@ def _body_text(msg: EmailMessage) -> str:
     return str(content)
 
 
+_MS_HOP = re.compile(r"\bby\s+[\w.-]+\.outlook\.com\b", re.I)
+
+
+def topmost_auth_results(msg: EmailMessage) -> tuple[str, bool]:
+    """(the topmost Authentication-Results header, whether a Microsoft hop lies below it)."""
+    items = [(k.lower(), str(v)) for k, v in msg.items()]
+    index = next((i for i, (k, _) in enumerate(items) if k == "authentication-results"), None)
+    if index is None:
+        return "", False
+    below = items[index + 1 :]
+    return items[index][1], any(k == "received" and _MS_HOP.search(v) for k, v in below)
+
+
 def parse_rfc822(
     raw: bytes, *, message_id: str, thread_id: str = "", received_at: datetime | None = None
 ) -> MailMessage:
@@ -64,6 +77,7 @@ def parse_rfc822(
     if received.tzinfo is None:
         received = received.replace(tzinfo=UTC)
     rfc_id = str(msg.get("Message-ID", "")).strip()
+    auth = topmost_auth_results(msg)
     return MailMessage(
         message_id=message_id,
         thread_id=thread_id or str(msg.get("Thread-Index", "")) or rfc_id or message_id,
@@ -76,7 +90,8 @@ def parse_rfc822(
         rfc_message_id=rfc_id,
         references=str(msg.get("References", "")),
         reply_to=str(msg.get("Reply-To", "")),
-        auth_results=str((msg.get_all("Authentication-Results") or [""])[0]),
+        auth_results=auth[0],
+        auth_above_ms_hop=auth[1],
     )
 
 

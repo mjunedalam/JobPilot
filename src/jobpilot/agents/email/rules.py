@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import urlparse
 
+import tldextract
+
 from jobpilot.mail.base import MailMessage, domain_of
 
 
@@ -57,7 +59,24 @@ JOB_SENDER_DOMAINS = frozenset(
     }
 )  # fmt: skip
 
-_TWO_LEVEL_SUFFIXES = frozenset({"co.in", "co.uk", "com.au", "co.jp", "com.sg", "org.in", "net.in"})
+# Free mail and shared hosting/form platforms: anyone can have an address or page there, so
+# they never identify an employer. (PSL private suffixes such as github.io are handled by the
+# suffix list itself.)
+SHARED_DOMAINS = frozenset(
+    {
+        "gmail.com", "googlemail.com", "google.com", "outlook.com", "hotmail.com", "live.com",
+        "msn.com", "microsoft.com", "office.com", "yahoo.com", "yahoo.co.in", "icloud.com",
+        "me.com", "proton.me", "protonmail.com", "zoho.com", "zohomail.in", "yandex.com",
+        "aol.com", "gmx.com", "mail.com", "rediffmail.com", "notion.so", "notion.site",
+        "typeform.com", "forms.gle", "bit.ly", "linktr.ee", "medium.com", "wordpress.com",
+        "blogspot.com", "wixsite.com", "squarespace.com", "github.com", "gitlab.com",
+        "amazonaws.com", "cloudfront.net", "azurewebsites.net", "herokuapp.com",
+        "google.co.in", "calendly.com", "zoom.us",
+    }
+)  # fmt: skip
+
+# Public Suffix List, bundled snapshot only (never fetched at run time).
+_PSL = tldextract.TLDExtract(suffix_list_urls=(), include_psl_private_domains=True, cache_dir=None)
 
 _JOB_WORDS = re.compile(
     r"\b(interview|application|applied|applying|candidate|candidature|position|role|opening|"
@@ -132,11 +151,9 @@ _OTP_CODE = re.compile(
 
 
 def registrable_domain(host: str) -> str:
-    """mail.careers.acme.co.in → acme.co.in (good enough for sender matching)."""
-    parts = host.lower().strip(".").split(".")
-    if len(parts) >= 3 and ".".join(parts[-2:]) in _TWO_LEVEL_SUFFIXES:
-        return ".".join(parts[-3:])
-    return ".".join(parts[-2:])
+    """careers.acme.co.in → acme.co.in; acme.github.io stays acme.github.io (Public Suffix List)."""
+    parts = _PSL(host.lower().strip("."))
+    return parts.top_domain_under_public_suffix or ""
 
 
 def host_of(url_or_host: str) -> str:
@@ -176,7 +193,7 @@ def company_domains(source_urls: list[str]) -> set[str]:
     listings, minus job portals and ATSs (shared by every employer). Never guessed from the
     company's name."""
     hosts = {registrable_domain(host_of(u)) for u in source_urls if host_of(u)}
-    return {h for h in hosts if h and h not in JOB_SENDER_DOMAINS}
+    return {h for h in hosts if h and h not in JOB_SENDER_DOMAINS | SHARED_DOMAINS}
 
 
 @dataclass(frozen=True)

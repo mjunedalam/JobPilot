@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# authserv-id each provider writes. Microsoft 365 omits it (its first clause is a result),
-# so for Outlook the topmost header is accepted as Microsoft's own stamp.
+# authserv-id each provider writes. Microsoft 365 omits it (its first clause is a result), so
+# for Outlook the topmost header must also sit above a Microsoft delivery hop.
 AUTHSERV_IDS: dict[str, frozenset[str]] = {"gmail": frozenset({"mx.google.com"})}
 
 
@@ -77,19 +77,20 @@ def parse(header: str) -> tuple[str, list[AuthResult]]:
     return authserv, results
 
 
-def dmarc_pass(header: str, *, provider: str, from_domain: str) -> bool:
+def dmarc_pass(header: str, *, provider: str, from_domain: str, above_ms_hop: bool = False) -> bool:
     if not header or not from_domain:
         return False
     authserv, results = parse(header)
     expected = AUTHSERV_IDS.get(provider)
     if expected is not None and authserv not in expected:
         return False
-    if provider == "outlook" and authserv:
-        return False  # Microsoft's stamp has no authserv-id; one here was written by someone else
+    if provider == "outlook" and (authserv or not above_ms_hop):
+        # Microsoft's stamp has no authserv-id and sits above its own delivery hops.
+        return False
     if provider not in ("gmail", "outlook"):
         return False
+    dmarc = [r for r in results if r.method == "dmarc"]
+    if len(dmarc) != 1:  # none, or ambiguous: not authenticated
+        return False
     domain = from_domain.lower().strip(".")
-    return any(
-        r.method == "dmarc" and r.result == "pass" and r.props.get("header.from") == domain
-        for r in results
-    )
+    return dmarc[0].result == "pass" and dmarc[0].props.get("header.from") == domain

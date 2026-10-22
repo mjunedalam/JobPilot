@@ -49,11 +49,14 @@ Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist,
   always kept (small models contradict themselves on `job_related`).
 - `agents/email/linker.py`: same thread, else company (+ title as tie-breaker) matching exactly
   one application; status only moves forward. Changing status on its own also needs a
-  verified sender: the sender's registrable domain must be one of the job's own (taken from its
-  listing URLs, never derived from the company name; portals and ATSs, shared by every
-  employer, never count), and `mail/auth.py` must find, in the receiving provider's topmost
-  `Authentication-Results` header (authserv-id `mx.google.com` for Gmail; Microsoft's own stamp
-  for Outlook, comments and quoted strings removed), `dmarc=pass` for exactly the From: domain.
+  verified sender: the sender's registrable domain (Public Suffix List, bundled snapshot) must
+  be one of the job's own, taken from its listing URLs and never derived from the company name.
+  Portals, ATSs, free-mail and shared hosting/form platforms never count. `mail/auth.py` must
+  also find exactly one DMARC result, `pass` for exactly the From: domain, in the receiving
+  provider's topmost `Authentication-Results` header, with comments and quoted strings removed.
+  For Gmail that header's authserv-id must be `mx.google.com`. For Outlook it must carry no
+  authserv-id and sit above a Microsoft delivery hop (`Received: … by ….outlook.com`), since a
+  sender's own copy can only appear below every such hop.
   Otherwise the email is linked with a suggested status, which you apply from the Inbox (an
   audited H6 decision), so a spoofed or lookalike "offer" changes nothing.
 - The poll cursor uses the provider's receive time (Gmail `internalDate`, Graph

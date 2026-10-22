@@ -89,6 +89,7 @@ class _Message(BaseModel):
     references: str = ""
     reply_to: str = ""
     auth_results: str = ""
+    auth_above_ms_hop: bool = False
 
     def to_mail(self) -> MailMessage:
         data = self.model_dump()
@@ -388,7 +389,12 @@ class EmailMonitor:
             return False
         if provider == "local":
             return True
-        return dmarc_pass(message.auth_results, provider=provider, from_domain=from_domain)
+        return dmarc_pass(
+            message.auth_results,
+            provider=provider,
+            from_domain=from_domain,
+            above_ms_hop=message.auth_above_ms_hop,
+        )
 
     def _raise_h6(self, h: AgentHarness, email_id: int) -> None:
         with session_scope(self._sessions) as s:
