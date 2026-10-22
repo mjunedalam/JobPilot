@@ -87,8 +87,12 @@ def find_application(session: Session, message: MailMessage, company_hint: str =
 def advance_status(session: Session, application_id: int, category: Category) -> str | None:
     """Move the application (and its job) forward. Returns the new status, or None."""
     target = CATEGORY_STATUS.get(category)
+    return move_to(session, application_id, target) if target is not None else None
+
+
+def move_to(session: Session, application_id: int, target: JobStatus) -> str | None:
     app = session.get(Application, application_id)
-    if target is None or app is None:
+    if app is None:
         return None
     current = JobStatus(app.status)
     if current == target:

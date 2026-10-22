@@ -46,6 +46,7 @@ Every response uses one envelope:
 | DELETE | `/api/v1/mail` | Disconnect and revoke |
 | POST | `/api/v1/mail/poll` | Check the mailbox now; returns what was kept, linked and raised |
 | GET | `/api/v1/emails` · `/api/v1/emails/{id}` | Job emails (filter by category / action status), with drafts |
+| POST | `/api/v1/emails/{id}/apply-suggestion` | Apply the status an unverified email suggests (audited H6 decision) |
 | GET | `/api/v1/drafts/{id}` | Draft versions, approval and send status |
 | GET | `/api/v1/resumes` | Resume versions (H7 attachments) |
 | GET | `/api/v1/stats?from=&to=` | Analytics (Phase 5) |

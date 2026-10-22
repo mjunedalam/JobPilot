@@ -1787,6 +1787,54 @@
         }
       }
     },
+    "/api/v1/emails/{email_id}/apply-suggestion": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Apply Suggestion",
+        "description": "Apply the status an unverified email suggests, as your own (audited) decision.",
+        "operationId": "apply_suggestion_api_v1_emails__email_id__apply_suggestion_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "email_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Email Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_EmailOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/drafts/{draft_id}": {
       "get": {
         "tags": [
@@ -2505,6 +2553,10 @@
             "type": "string",
             "title": "Link Reason"
           },
+          "suggested_status": {
+            "type": "string",
+            "title": "Suggested Status"
+          },
           "application": {
             "anyOf": [
               {
@@ -2549,6 +2601,7 @@
           "action_status",
           "received_at",
           "link_reason",
+          "suggested_status",
           "application",
           "workflow_thread_id",
           "body",
@@ -2604,6 +2657,10 @@
             "type": "string",
             "title": "Link Reason"
           },
+          "suggested_status": {
+            "type": "string",
+            "title": "Suggested Status"
+          },
           "application": {
             "anyOf": [
               {
@@ -2632,6 +2689,7 @@
           "action_status",
           "received_at",
           "link_reason",
+          "suggested_status",
           "application",
           "workflow_thread_id"
         ],
@@ -2806,6 +2864,40 @@
         },
         "type": "object",
         "title": "Envelope[EmailDetailOut]"
+      },
+      "Envelope_EmailOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[EmailOut]"
       },
       "Envelope_HealthOut_": {
         "properties": {

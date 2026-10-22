@@ -26,10 +26,11 @@ from jobpilot.agents.email.rules import (
     SUGGESTED_ACTION,
     Category,
     Signal,
+    company_domains,
     is_otp_message,
     job_signal,
+    registrable_domain,
     rule_category,
-    sender_domain_matches,
 )
 from jobpilot.core.audit import log_action
 from jobpilot.core.db import session_scope
@@ -39,7 +40,8 @@ from jobpilot.harness.guardrails import fence_untrusted, injection_signals
 from jobpilot.harness.runner import AgentHarness
 from jobpilot.harness.tools import SideEffect, Tool, ToolRegistry
 from jobpilot.llm.base import LLMError
-from jobpilot.mail.base import MailAuthError, Mailbox, MailError, MailMessage
+from jobpilot.mail.auth import dmarc_pass
+from jobpilot.mail.base import MailAuthError, Mailbox, MailError, MailMessage, domain_of
 from jobpilot.notifications import Dispatcher, Notification
 from jobpilot.prompts import load_prompt
 
@@ -86,7 +88,7 @@ class _Message(BaseModel):
     rfc_message_id: str = ""
     references: str = ""
     reply_to: str = ""
-    authenticated: bool | None = None
+    auth_results: str = ""
 
     def to_mail(self) -> MailMessage:
         data = self.model_dump()
@@ -333,18 +335,20 @@ class EmailMonitor:
             s.flush()
             link = find_application(s, message, triage.company)
             changed = suggested = None
+            verified = False
             if link is not None:
                 row.linked_application_id, row.link_reason = link.application_id, link.reason
                 report.linked += 1
-                if self._sender_verified(s, message, link.application_id, provider):
+                verified = self._sender_verified(s, message, link.application_id, provider)
+                if verified:
                     changed = advance_status(s, link.application_id, category)
                     if changed:
                         note = f"application {link.application_id} → {changed}"
                         report.status_changes.append(note)
                 elif (target := CATEGORY_STATUS.get(category)) is not None:
-                    # Anyone can write a company's name in From: suggest, don't change.
+                    # Unverified sender: you decide (Inbox → apply suggestion).
                     suggested = target.value
-                    row.link_reason = f"{link.reason}; suggests {suggested} (sender not verified)"
+                    row.suggested_status = suggested
             log_action(
                 s,
                 ACTOR,
@@ -358,7 +362,7 @@ class EmailMonitor:
                     "linked_application_id": row.linked_application_id,
                     "status_change": changed,
                     "suggested_status": suggested,
-                    "authenticated": message.authenticated,
+                    "sender_verified": verified,
                 },
             )
             return row.id, needs_action
@@ -367,17 +371,24 @@ class EmailMonitor:
     def _sender_verified(
         s: Session, message: MailMessage, application_id: int, provider: str
     ) -> bool:
-        """An email may change an application's status only if it comes from the company's own
-        domain (or a job portal / ATS) and the receiving provider says it passed DMARC. The
-        local test mailbox has no authentication results and is trusted as-is."""
-        company = s.scalar(
-            select(Job.company)
+        """An email may change an application's status on its own only when its sender's
+        registrable domain is one of the job's own (from its listing URLs, never derived from
+        the company name) and the receiving provider authenticated it (DMARC pass for exactly
+        that From: domain). Portal / ATS senders are shared by every employer, so they only
+        suggest. The local test mailbox has no Authentication-Results and skips that check."""
+        urls = s.scalar(
+            select(Job.source_urls)
             .join(Application, Application.job_id == Job.id)
             .where(Application.id == application_id)
         )
-        if company is None or not sender_domain_matches(message, company):
+        from_domain = domain_of(message.sender)
+        if not urls or not from_domain:
             return False
-        return provider == "local" or message.authenticated is True
+        if registrable_domain(from_domain) not in company_domains(list(urls)):
+            return False
+        if provider == "local":
+            return True
+        return dmarc_pass(message.auth_results, provider=provider, from_domain=from_domain)
 
     def _raise_h6(self, h: AgentHarness, email_id: int) -> None:
         with session_scope(self._sessions) as s:

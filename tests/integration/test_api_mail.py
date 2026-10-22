@@ -149,3 +149,38 @@ def test_poll_h6_h7_send(setup, tmp_path) -> None:  # noqa: ANN001
     with session_scope(ctx.sessions) as s:
         checkpoints = [a.checkpoint for a in s.query(AuditLog) if a.actor == "user"]
         assert checkpoints == ["H6", "H7"]
+
+
+def test_apply_suggestion_is_a_logged_user_decision(setup) -> None:  # noqa: ANN001
+    from jobpilot.core.models import Application, Email, Job
+
+    client, ctx, _ = setup
+    with session_scope(ctx.sessions) as s:
+        job = Job(dedup_key="g|p", title="Platform Engineer", company="Globex", status="applied")
+        s.add(job)
+        s.flush()
+        app = Application(job_id=job.id, portal="naukri", attempts=1, status="applied")
+        s.add(app)
+        s.flush()
+        e = Email(
+            message_id="local:x",
+            thread_id="t",
+            sender="careers@globex.io",
+            subject="Update",
+            received_at=job.fetched_at,
+            category="rejection",
+            linked_application_id=app.id,
+            suggested_status="rejected",
+        )
+        s.add(e)
+        s.flush()
+        email_id, app_id = e.id, app.id
+    r = client.post(f"/api/v1/emails/{email_id}/apply-suggestion", headers=AUTH)
+    assert r.status_code == 200 and r.json()["data"]["suggested_status"] == ""
+    again = client.post(f"/api/v1/emails/{email_id}/apply-suggestion", headers=AUTH)
+    assert again.status_code == 409
+    with session_scope(ctx.sessions) as s:
+        assert s.get(Application, app_id).status == "rejected"
+        [decision] = [a for a in s.query(AuditLog) if a.action == "decision:apply_status"]
+        assert decision.checkpoint == "H6"
+        assert decision.payload["approved_content"]["status"] == "rejected"

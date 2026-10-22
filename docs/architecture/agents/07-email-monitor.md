@@ -48,10 +48,14 @@ Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist,
   Whether action is needed is decided by the category, not by the model. A specific category is
   always kept (small models contradict themselves on `job_related`).
 - `agents/email/linker.py`: same thread, else company (+ title as tie-breaker) matching exactly
-  one application; status only moves forward. A status change also needs a verified sender:
-  the sender's own domain is the company's (or a job portal / ATS), and the receiving
-  provider's topmost `Authentication-Results` header says `dmarc=pass`. Otherwise the email
-  is linked with a suggested status for you to judge, so a spoofed "offer" changes nothing.
+  one application; status only moves forward. Changing status on its own also needs a
+  verified sender: the sender's registrable domain must be one of the job's own (taken from its
+  listing URLs, never derived from the company name; portals and ATSs, shared by every
+  employer, never count), and `mail/auth.py` must find, in the receiving provider's topmost
+  `Authentication-Results` header (authserv-id `mx.google.com` for Gmail; Microsoft's own stamp
+  for Outlook, comments and quoted strings removed), `dmarc=pass` for exactly the From: domain.
+  Otherwise the email is linked with a suggested status, which you apply from the Inbox (an
+  audited H6 decision), so a spoofed or lookalike "offer" changes nothing.
 - The poll cursor uses the provider's receive time (Gmail `internalDate`, Graph
   `receivedDateTime`), never the sender's `Date:` header, and never moves past now. Gmail's
   newest-first listing is paged to the end, so a busy inbox processes its oldest new mail first. A confirmation email settles a submit that went

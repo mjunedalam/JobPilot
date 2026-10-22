@@ -2,6 +2,7 @@ import { ExternalLink, MailCheck, RefreshCw, Unplug } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import {
+  useApplySuggestion,
   useConnectMail,
   useDisconnectMail,
   useEmails,
@@ -116,6 +117,24 @@ function Account({ status }: { status: MailStatus }) {
   );
 }
 
+function Suggestion({ email }: { email: EmailRow }) {
+  const apply = useApplySuggestion();
+  if (!email.suggested_status || !email.application) return null;
+  return (
+    <div className="mail-suggest">
+      <p>
+        Suggests moving <strong>{email.application.title}</strong> to{" "}
+        <Badge tone="amber">{email.suggested_status}</Badge>. The sender isn't verified as{" "}
+        {email.application.company}, so this waits for you.
+      </p>
+      <Button busy={apply.isPending} onClick={() => apply.mutate(email.id)}>
+        Apply {email.suggested_status}
+      </Button>
+      <ErrorNote error={apply.error} />
+    </div>
+  );
+}
+
 function EmailItem({ email }: { email: EmailRow }) {
   return (
     <article className={`mail-row ${email.action_status === "needs_action" ? "mail-row-hot" : ""}`}>
@@ -133,6 +152,7 @@ function EmailItem({ email }: { email: EmailRow }) {
             {" "}({email.link_reason}) · <Badge tone="sky">{email.application.status}</Badge>
           </p>
         )}
+        <Suggestion email={email} />
       </div>
       <div className="app-side">
         <span className={email.action_status === "needs_action" ? "tone-amber" : "muted"}>

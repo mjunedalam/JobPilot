@@ -171,15 +171,12 @@ def mentions_company(message: MailMessage, company: str) -> bool:
     return bool(label) and label == key.replace(" ", "")
 
 
-def sender_domain_matches(message: MailMessage, company: str) -> bool:
-    """The sender's own domain is the company's (acme-payments.com for "Acme Payments") or a
-    job portal / ATS. Display names and body text don't count: anyone can write those."""
-    if is_job_sender(message):
-        return True
-    domain = domain_of(message.sender)
-    key = normalize_company(company).replace(" ", "")
-    label = registrable_domain(domain).split(".")[0].replace("-", "") if domain else ""
-    return len(key) >= 3 and label == key
+def company_domains(source_urls: list[str]) -> set[str]:
+    """Domains known to belong to the company: the registrable domains of the job's own
+    listings, minus job portals and ATSs (shared by every employer). Never guessed from the
+    company's name."""
+    hosts = {registrable_domain(host_of(u)) for u in source_urls if host_of(u)}
+    return {h for h in hosts if h and h not in JOB_SENDER_DOMAINS}
 
 
 @dataclass(frozen=True)

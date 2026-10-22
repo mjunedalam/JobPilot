@@ -699,6 +699,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/emails/{email_id}/apply-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Suggestion
+         * @description Apply the status an unverified email suggests, as your own (audited) decision.
+         */
+        post: operations["apply_suggestion_api_v1_emails__email_id__apply_suggestion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/drafts/{draft_id}": {
         parameters: {
             query?: never;
@@ -995,6 +1015,8 @@ export interface components {
             received_at: string;
             /** Link Reason */
             link_reason: string;
+            /** Suggested Status */
+            suggested_status: string;
             application: components["schemas"]["LinkedApplicationOut"] | null;
             /** Workflow Thread Id */
             workflow_thread_id: string;
@@ -1034,6 +1056,8 @@ export interface components {
             received_at: string;
             /** Link Reason */
             link_reason: string;
+            /** Suggested Status */
+            suggested_status: string;
             application: components["schemas"]["LinkedApplicationOut"] | null;
             /** Workflow Thread Id */
             workflow_thread_id: string;
@@ -1090,6 +1114,17 @@ export interface components {
              */
             success: boolean;
             data?: components["schemas"]["EmailDetailOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[EmailOut] */
+        Envelope_EmailOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["EmailOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -3254,6 +3289,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_EmailDetailOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_suggestion_api_v1_emails__email_id__apply_suggestion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                email_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EmailOut_"];
                 };
             };
             /** @description Validation Error */

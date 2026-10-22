@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jobpilot.agents.email.linker import move_to
 from jobpilot.api.deps import AUTH, Ctx, DbSession, RequestId
 from jobpilot.api.envelope import Envelope, ok
 from jobpilot.api.mail_schemas import (
@@ -27,8 +28,10 @@ from jobpilot.api.mail_schemas import (
     PollOut,
     ResumeOut,
 )
+from jobpilot.core.audit import log_decision
 from jobpilot.core.context import AppContext
 from jobpilot.core.models import Application, Draft, Email, Job, ResumeVersion
+from jobpilot.core.status import Checkpoint, JobStatus
 from jobpilot.mail.base import MailError
 
 router = APIRouter(tags=["mail"])
@@ -157,6 +160,7 @@ def _email_out(session: Session, e: Email) -> EmailOut:
         action_status=e.action_status,
         received_at=e.received_at,
         link_reason=e.link_reason,
+        suggested_status=e.suggested_status,
         application=application,
         workflow_thread_id=e.workflow_thread_id,
     )
@@ -207,6 +211,41 @@ def get_email(email_id: int, session: DbSession, rid: RequestId) -> Envelope[Ema
         ),
         rid,
     )
+
+
+@router.post(
+    "/emails/{email_id}/apply-suggestion", response_model=Envelope[EmailOut], dependencies=AUTH
+)
+def apply_suggestion(
+    ctx: Ctx, email_id: int, session: DbSession, rid: RequestId
+) -> Envelope[EmailOut]:
+    """Apply the status an unverified email suggests, as your own (audited) decision."""
+    ctx.kill_switch.check()
+    e = session.get(Email, email_id)
+    if e is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "email not found")
+    if not e.suggested_status or e.linked_application_id is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "this email has no pending suggestion")
+    target = JobStatus(e.suggested_status)
+    if move_to(session, e.linked_application_id, target) is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, f"the application can no longer move to {target.value}"
+        )
+    log_decision(
+        session,
+        Checkpoint.H6_EMAIL_ACTION,
+        "apply_status",
+        approved_content={
+            "email_id": e.id,
+            "application_id": e.linked_application_id,
+            "status": target.value,
+        },
+        entity_type="email",
+        entity_id=e.id,
+    )
+    e.suggested_status = ""
+    session.flush()
+    return ok(_email_out(session, e), rid)
 
 
 @router.get("/drafts/{draft_id}", response_model=Envelope[DraftOut], dependencies=AUTH)

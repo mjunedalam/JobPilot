@@ -37,9 +37,9 @@ class MailMessage:
     rfc_message_id: str = ""  # the Message-ID header, for In-Reply-To / References
     references: str = ""
     reply_to: str = ""
-    # DMARC verdict from the receiving provider's Authentication-Results header: True (pass),
-    # False (fail/none), None (no header, e.g. the local test mailbox).
-    authenticated: bool | None = None
+    # The topmost Authentication-Results header (added by the receiving provider); judged by
+    # mail/auth.py against the provider and the From: domain.
+    auth_results: str = ""
 
     @property
     def sender_address(self) -> str:

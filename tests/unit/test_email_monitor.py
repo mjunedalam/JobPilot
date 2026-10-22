@@ -66,10 +66,21 @@ def test_otp_extraction_and_domains() -> None:
 # ---- linker ------------------------------------------------------------------------------
 
 
-def _application(
-    s, company: str, title: str, status: JobStatus = JobStatus.APPLIED, error: str = ""
-) -> int:  # noqa: ANN001
-    job = Job(dedup_key=f"{company}|{title}", title=title, company=company, status=status)
+def _application(  # noqa: ANN001
+    s,
+    company: str,
+    title: str,
+    status: JobStatus = JobStatus.APPLIED,
+    error: str = "",
+    urls: tuple[str, ...] = (),
+) -> int:
+    job = Job(
+        dedup_key=f"{company}|{title}",
+        title=title,
+        company=company,
+        status=status,
+        source_urls=list(urls),
+    )
     s.add(job)
     s.flush()
     app = Application(job_id=job.id, portal="naukri", attempts=1, status=status, error=error)
@@ -132,8 +143,17 @@ def setup(sessions, kill_switch, tmp_path):  # noqa: ANN001, ANN201
     for name in ("interview.eml", "otp.eml", "newsletter.eml", "rejection.eml"):
         shutil.copy(FIX / name, tmp_path / "mailbox" / "inbox" / name)
     with session_scope(sessions) as s:
-        acme = _application(s, "Acme Payments", "Senior Backend Engineer")
-        globex = _application(s, "Globex", "Platform Engineer")
+        # Acme's listing is on its own careers site: mail from that domain is verified.
+        acme = _application(
+            s,
+            "Acme Payments",
+            "Senior Backend Engineer",
+            urls=("https://careers.acme-payments.com/jobs/1",),
+        )
+        # Globex was found on a portal: no company domain is known, so mail only suggests.
+        globex = _application(
+            s, "Globex", "Platform Engineer", urls=("https://www.naukri.com/job/9",)
+        )
     cursor: list[datetime | None] = [None]
     started: list[int] = []
 
@@ -184,7 +204,8 @@ def test_poll_keeps_job_mail_links_it_and_raises_h6(setup, sessions) -> None:  #
         assert interview.workflow_thread_id == f"thread-{interview.id}"
         assert rows["rejection"].action_status == "info"
         assert s.get(Application, ids["acme"]).status == "interview"
-        assert s.get(Application, ids["globex"]).status == "rejected"
+        assert s.get(Application, ids["globex"]).status == "applied"
+        assert rows["rejection"].suggested_status == "rejected"
         assert not any("482913" in str(a.payload) for a in s.query(AuditLog))
     assert ids["started"] == [interview.id]
     assert dispatcher.sent[0].category == "interview_invite"
@@ -292,31 +313,49 @@ def test_spoofed_sender_links_but_never_changes_status(setup, sessions, tmp_path
     with session_scope(sessions) as s:
         assert s.get(Application, ids["acme"]).status == "applied"
         [row] = s.query(Email).all()
-        assert "suggests offer (sender not verified)" in row.link_reason
+        assert row.suggested_status == "offer"
 
 
-def test_status_changes_need_dmarc_pass_on_real_providers(session) -> None:  # noqa: ANN001
-    from email import message_from_bytes, policy
-
-    from jobpilot.mail.mime import dmarc_verdict
-
-    app_id = _application(session, "Acme Payments", "Senior Backend Engineer")
+def test_auto_status_needs_the_jobs_own_domain_and_provider_dmarc(session) -> None:  # noqa: ANN001
+    app_id = _application(
+        session, "Acme Payments", "Engineer", urls=("https://careers.acme-payments.com/1",)
+    )
     raw = (FIX / "interview.eml").read_bytes()
-    passed = b"Authentication-Results: mx.google.com; dmarc=pass header.from=acme-payments.com\n"
-    forged_below = b"Authentication-Results: mx.google.com; dmarc=fail\n" + passed
-
-    def verdict(extra: bytes) -> bool | None:
-        return dmarc_verdict(message_from_bytes(extra + raw, policy=policy.default))
-
-    assert verdict(passed) is True
-    assert verdict(forged_below) is False  # only the topmost (provider-added) header counts
-    assert verdict(b"") is None
+    google = b"Authentication-Results: mx.google.com; dmarc=pass header.from=acme-payments.com\n"
     check = EmailMonitor._sender_verified
-    plain = parse_rfc822(raw, message_id="m")
-    signed = parse_rfc822(passed + raw, message_id="m")
+    signed = parse_rfc822(google + raw, message_id="m")
     assert check(session, signed, app_id, "gmail") is True
-    assert check(session, plain, app_id, "gmail") is False  # no verdict: not trusted
-    assert check(session, plain, app_id, "local") is True  # the dev mailbox has none
+    assert check(session, parse_rfc822(raw, message_id="m"), app_id, "gmail") is False
+    assert check(session, parse_rfc822(raw, message_id="m"), app_id, "local") is True
+    # A lookalike domain is not the job's domain, however the company name reads.
+    lookalike = raw.replace(b"@acme-payments.com", b"@acmepayments.co")
+    assert check(session, parse_rfc822(lookalike, message_id="m"), app_id, "local") is False
+    # A portal sender is shared by every employer: never trusted for a status change.
+    portal = raw.replace(b"priya.menon@acme-payments.com", b"jobs@naukri.com")
+    app2 = _application(session, "Initech", "Engineer", urls=("https://www.naukri.com/j/2",))
+    assert check(session, parse_rfc822(portal, message_id="m"), app2, "local") is False
+
+
+def test_authentication_results_parsing() -> None:
+    from jobpilot.mail.auth import dmarc_pass
+
+    def ok(header: str, provider: str = "gmail", domain: str = "acme.com") -> bool:
+        return dmarc_pass(header, provider=provider, from_domain=domain)
+
+    assert ok("mx.google.com; dkim=pass; dmarc=pass (p=REJECT) header.from=acme.com")
+    assert not ok("evil.example; dmarc=pass header.from=acme.com")  # wrong authserv-id
+    assert not ok("mx.google.com; dmarc=fail header.from=acme.com")
+    assert not ok("mx.google.com; dmarc=pass header.from=other.com")  # another From domain
+    assert not ok("mx.google.com; spf=none (dmarc=pass header.from=acme.com)")  # comment
+    assert not ok('mx.google.com; spf=none reason="dmarc=pass header.from=acme.com"')  # quoted
+    assert not ok("mx.google.com; dmarc=passed header.from=acme.com")
+    ms = (
+        "spf=pass (sender IP is 1.2.3.4) smtp.mailfrom=acme.com; "
+        "dmarc=pass action=none header.from=acme.com;compauth=pass"
+    )
+    assert ok(ms, "outlook")
+    assert not ok("mx.google.com; dmarc=pass header.from=acme.com", "outlook")  # not Microsoft's
+    assert not ok(ms, "local") and not ok("", "gmail")
 
 
 def test_future_dated_mail_cannot_push_the_cursor_ahead(setup, sessions, tmp_path) -> None:  # noqa: ANN001

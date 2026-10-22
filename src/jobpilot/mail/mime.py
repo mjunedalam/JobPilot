@@ -49,19 +49,6 @@ def _body_text(msg: EmailMessage) -> str:
     return str(content)
 
 
-_DMARC = re.compile(r"\bdmarc=(\w+)", re.I)
-
-
-def dmarc_verdict(msg: EmailMessage) -> bool | None:
-    """The topmost Authentication-Results header is the one the receiving provider added; any
-    lower ones may come from the sender and are ignored."""
-    headers = msg.get_all("Authentication-Results") or []
-    if not headers:
-        return None
-    m = _DMARC.search(str(headers[0]))
-    return m is not None and m.group(1).lower() == "pass"
-
-
 def parse_rfc822(
     raw: bytes, *, message_id: str, thread_id: str = "", received_at: datetime | None = None
 ) -> MailMessage:
@@ -89,7 +76,7 @@ def parse_rfc822(
         rfc_message_id=rfc_id,
         references=str(msg.get("References", "")),
         reply_to=str(msg.get("Reply-To", "")),
-        authenticated=dmarc_verdict(msg),
+        auth_results=str((msg.get_all("Authentication-Results") or [""])[0]),
     )
 
 

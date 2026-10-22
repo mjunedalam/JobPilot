@@ -162,8 +162,9 @@ On **Inbox**, connect **Gmail** or **Outlook / Microsoft 365** (OAuth in your br
 3. Links it to the application it is about (same thread, or the company plus the job title; an
    ambiguous match is left unlinked, never guessed) and moves that application forward:
    interview, shortlisted, offer or rejected. It never moves an application backwards, and it
-   only does so for mail from the company's own domain that the provider authenticated (DMARC);
-   anything else is linked with a suggestion instead.
+   does so on its own only for mail from the job's own domain (taken from where you found the
+   job) that your provider authenticated (DMARC). Anything else, including mail from portals,
+   shows a suggested status that you apply with one click.
 4. For mail that needs you, it sends a notification (desktop, Telegram or a webhook) and adds an
    **H6** decision: draft a reply (with your instruction, e.g. "accept, propose Thursday 3–5 PM
    IST"), ignore, or mark done.

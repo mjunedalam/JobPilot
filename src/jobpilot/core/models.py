@@ -177,6 +177,8 @@ class Email(Base):
         ForeignKey("applications.id"), nullable=True
     )
     link_reason: Mapped[str] = mapped_column(String(200), default="")
+    # A status change this email implies but which needs the user (sender not verified).
+    suggested_status: Mapped[str] = mapped_column(String(32), default="")
     # info | needs_action | drafting | replied | ignored | done
     action_status: Mapped[str] = mapped_column(String(32), default="info", index=True)
     workflow_thread_id: Mapped[str] = mapped_column(String(64), default="")

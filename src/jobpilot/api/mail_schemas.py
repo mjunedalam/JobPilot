@@ -71,6 +71,7 @@ class EmailOut(BaseModel):
     action_status: str
     received_at: datetime
     link_reason: str
+    suggested_status: str  # needs you: the sender could not be verified
     application: LinkedApplicationOut | None
     workflow_thread_id: str
 

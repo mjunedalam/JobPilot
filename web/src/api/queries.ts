@@ -401,3 +401,15 @@ export function usePollMail() {
     onSettled: () => invalidate(mailKeys.status, mailKeys.allEmails, flowKeys.decisions, flowKeys.workflows, flowKeys.applications),
   });
 }
+
+/** An unverified email's suggested status, applied as the user's own (audited) decision. */
+export function useApplySuggestion() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (emailId: number) =>
+      unwrap(await api.POST("/api/v1/emails/{email_id}/apply-suggestion", {
+        params: { path: { email_id: emailId } },
+      })),
+    onSettled: () => invalidate(mailKeys.allEmails, flowKeys.applications),
+  });
+}
