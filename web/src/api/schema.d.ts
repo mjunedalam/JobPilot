@@ -609,6 +609,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mail Status */
+        get: operations["mail_status_api_v1_mail_get"];
+        put?: never;
+        post?: never;
+        /** Disconnect */
+        delete: operations["disconnect_api_v1_mail_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mail/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect
+         * @description Gmail / Outlook: returns the URL where you grant access; the provider then redirects
+         *     back to this API and the account is saved. Local: a folder mailbox for trying things out.
+         */
+        post: operations["connect_api_v1_mail_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mail/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Poll Now */
+        post: operations["poll_now_api_v1_mail_poll_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/emails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Emails */
+        get: operations["list_emails_api_v1_emails_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/emails/{email_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Email */
+        get: operations["get_email_api_v1_emails__email_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drafts/{draft_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Draft */
+        get: operations["get_draft_api_v1_drafts__draft_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Resumes */
+        get: operations["list_resumes_api_v1_resumes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -756,6 +880,30 @@ export interface components {
             /** Year */
             year?: number | null;
         };
+        /** ConnectIn */
+        ConnectIn: {
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "gmail" | "outlook" | "local";
+            /**
+             * Calendar
+             * @default false
+             */
+            calendar: boolean;
+            /**
+             * Address
+             * @default me@jobpilot.local
+             */
+            address: string;
+        };
+        /** ConnectOut */
+        ConnectOut: {
+            /** Authorization Url */
+            authorization_url: string | null;
+            account: components["schemas"]["MailAccountOut"] | null;
+        };
         /** CredentialsIn */
         CredentialsIn: {
             /** Username */
@@ -787,6 +935,27 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** DraftOut */
+        DraftOut: {
+            /** Id */
+            id: number;
+            /** Email Id */
+            email_id: number;
+            /** Status */
+            status: string;
+            /** Instruction */
+            instruction: string;
+            /** Versions */
+            versions: {
+                [key: string]: unknown;
+            }[];
+            /** Approved Version */
+            approved_version: number | null;
+            /** Sent At */
+            sent_at: string | null;
+            /** Error */
+            error: string;
+        };
         /** Education */
         Education: {
             /** Degree */
@@ -798,6 +967,76 @@ export interface components {
             institution: string;
             /** Year */
             year?: number | null;
+        };
+        /** EmailDetailOut */
+        EmailDetailOut: {
+            /** Id */
+            id: number;
+            /** Sender */
+            sender: string;
+            /** Subject */
+            subject: string;
+            /** Snippet */
+            snippet: string;
+            /** Summary */
+            summary: string;
+            /** Category */
+            category: string;
+            /** Suggested Action */
+            suggested_action: string;
+            /** Classified By */
+            classified_by: string;
+            /** Action Status */
+            action_status: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /** Link Reason */
+            link_reason: string;
+            application: components["schemas"]["LinkedApplicationOut"] | null;
+            /** Workflow Thread Id */
+            workflow_thread_id: string;
+            /** Body */
+            body: string;
+            /** Recipients */
+            recipients: {
+                [key: string]: unknown;
+            };
+            /** Drafts */
+            drafts: components["schemas"]["DraftOut"][];
+        };
+        /** EmailOut */
+        EmailOut: {
+            /** Id */
+            id: number;
+            /** Sender */
+            sender: string;
+            /** Subject */
+            subject: string;
+            /** Snippet */
+            snippet: string;
+            /** Summary */
+            summary: string;
+            /** Category */
+            category: string;
+            /** Suggested Action */
+            suggested_action: string;
+            /** Classified By */
+            classified_by: string;
+            /** Action Status */
+            action_status: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /** Link Reason */
+            link_reason: string;
+            application: components["schemas"]["LinkedApplicationOut"] | null;
+            /** Workflow Thread Id */
+            workflow_thread_id: string;
         };
         /** Envelope[AnswerOut] */
         Envelope_AnswerOut_: {
@@ -818,6 +1057,39 @@ export interface components {
              */
             success: boolean;
             data?: components["schemas"]["CandidateProfile"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[ConnectOut] */
+        Envelope_ConnectOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["ConnectOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[DraftOut] */
+        Envelope_DraftOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["DraftOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[EmailDetailOut] */
+        Envelope_EmailDetailOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["EmailDetailOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -876,6 +1148,17 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[MailStatusOut] */
+        Envelope_MailStatusOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["MailStatusOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[ModelListOut] */
         Envelope_ModelListOut_: {
             /**
@@ -884,6 +1167,17 @@ export interface components {
              */
             success: boolean;
             data?: components["schemas"]["ModelListOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[PollOut] */
+        Envelope_PollOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["PollOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -1000,6 +1294,18 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[list[EmailOut]] */
+        Envelope_list_EmailOut__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: components["schemas"]["EmailOut"][] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[list[JobOut]] */
         Envelope_list_JobOut__: {
             /**
@@ -1069,6 +1375,18 @@ export interface components {
             success: boolean;
             /** Data */
             data?: components["schemas"]["ProviderOut"][] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[list[ResumeOut]] */
+        Envelope_list_ResumeOut__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: components["schemas"]["ResumeOut"][] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -1203,6 +1521,17 @@ export interface components {
             /** Vault Ready */
             vault_ready: boolean;
         };
+        /** LinkedApplicationOut */
+        LinkedApplicationOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Company */
+            company: string;
+            /** Status */
+            status: string;
+        };
         /** Links */
         Links: {
             /** Linkedin */
@@ -1221,6 +1550,35 @@ export interface components {
              * @default manual
              */
             method: string;
+        };
+        /** MailAccountOut */
+        MailAccountOut: {
+            /** Provider */
+            provider: string;
+            /** Address */
+            address: string;
+            /** Status */
+            status: string;
+            /** Status Reason */
+            status_reason: string;
+            /** Calendar Enabled */
+            calendar_enabled: boolean;
+            /** Connected At */
+            connected_at: string | null;
+            /** Last Polled At */
+            last_polled_at: string | null;
+        };
+        /** MailStatusOut */
+        MailStatusOut: {
+            account: components["schemas"]["MailAccountOut"] | null;
+            /** Configured */
+            configured: {
+                [key: string]: boolean;
+            };
+            /** Poll Interval Minutes */
+            poll_interval_minutes: number;
+            /** Notifications */
+            notifications: components["schemas"]["NotificationChannelOut"][];
         };
         /** Meta */
         Meta: {
@@ -1273,6 +1631,35 @@ export interface components {
              * @default year
              */
             period: string;
+        };
+        /** NotificationChannelOut */
+        NotificationChannelOut: {
+            /** Channel */
+            channel: string;
+            /** Available */
+            available: boolean;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** PollOut */
+        PollOut: {
+            /** Fetched */
+            fetched: number;
+            /** Stored */
+            stored: number;
+            /** Ignored */
+            ignored: number;
+            /** Needs Action */
+            needs_action: number;
+            /** Linked */
+            linked: number;
+            /** Status Changes */
+            status_changes: string[];
+            /** Error */
+            error: string;
         };
         /** PortalEnableIn */
         PortalEnableIn: {
@@ -1477,6 +1864,17 @@ export interface components {
          * @enum {string}
          */
         RecencyPreset: "1h" | "24h" | "7d" | "30d" | "custom";
+        /** ResumeOut */
+        ResumeOut: {
+            /** Id */
+            id: number;
+            /** Label */
+            label: string;
+            /** File Name */
+            file_name: string;
+            /** Is Default */
+            is_default: boolean;
+        };
         /** RoleTrialOut */
         RoleTrialOut: {
             /** Ok */
@@ -2708,6 +3106,214 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mail_status_api_v1_mail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MailStatusOut_"];
+                };
+            };
+        };
+    };
+    disconnect_api_v1_mail_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MailStatusOut_"];
+                };
+            };
+        };
+    };
+    connect_api_v1_mail_connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ConnectOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    poll_now_api_v1_mail_poll_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PollOut_"];
+                };
+            };
+        };
+    };
+    list_emails_api_v1_emails_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                action_status?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_EmailOut__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_email_api_v1_emails__email_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                email_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EmailDetailOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_draft_api_v1_drafts__draft_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_DraftOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_resumes_api_v1_resumes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_ResumeOut__"];
                 };
             };
         };

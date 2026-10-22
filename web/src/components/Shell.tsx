@@ -33,6 +33,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: "/", label: "Flight deck", icon: <Gauge size={17} /> },
       { to: "/jobs", label: "Jobs", icon: <Search size={17} /> },
       { to: "/approvals", label: "Approvals", icon: <ListChecks size={17} /> },
+      { to: "/inbox", label: "Inbox", icon: <Inbox size={17} /> },
     ],
   },
   {
@@ -54,7 +55,6 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
 
 // Shown, not linked: these arrive with later build phases.
 const UPCOMING = [
-  { label: "Inbox", phase: 4, icon: <Inbox size={17} /> },
   { label: "Reports", phase: 5, icon: <BarChart3 size={17} /> },
 ];
 

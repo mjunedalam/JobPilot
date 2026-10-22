@@ -4,6 +4,7 @@ import { TokenGate } from "./components/TokenGate";
 import { Answers } from "./pages/Answers";
 import { Approvals } from "./pages/Approvals";
 import { FlightDeck } from "./pages/FlightDeck";
+import { Inbox } from "./pages/Inbox";
 import { Jobs } from "./pages/Jobs";
 import { Models } from "./pages/Models";
 import { Portals } from "./pages/Portals";
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { index: true, element: <FlightDeck /> },
       { path: "jobs", element: <Jobs /> },
       { path: "approvals", element: <Approvals /> },
+      { path: "inbox", element: <Inbox /> },
       { path: "portals", element: <Portals /> },
       { path: "profile", element: <Profile /> },
       { path: "answers", element: <Answers /> },

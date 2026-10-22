@@ -337,3 +337,67 @@ export async function fetchProof(applicationId: number): Promise<string> {
   if (!response.ok) throw new Error(`proof unavailable (${response.status})`);
   return URL.createObjectURL(await response.blob());
 }
+
+// ---- Mail, emails and replies (Phase 4) ----------------------------------------------
+
+export type MailStatus = Schemas["MailStatusOut"];
+export type EmailRow = Schemas["EmailOut"];
+export type EmailDetail = Schemas["EmailDetailOut"];
+export type ResumeRow = Schemas["ResumeOut"];
+export type PollReport = Schemas["PollOut"];
+
+export const mailKeys = {
+  status: ["mail"] as const,
+  emails: (category: string) => ["emails", category] as const,
+  allEmails: ["emails"] as const,
+  email: (id: number) => ["emails", "detail", id] as const,
+  resumes: ["resumes"] as const,
+};
+
+export const useMailStatus = () =>
+  useQuery({
+    queryKey: mailKeys.status,
+    queryFn: async () => unwrap(await api.GET("/api/v1/mail")),
+    refetchInterval: 30_000,
+  });
+
+export const useEmails = (category: string) =>
+  useQuery({
+    queryKey: mailKeys.emails(category),
+    queryFn: async () =>
+      unwrap(await api.GET("/api/v1/emails", {
+        params: { query: category === "all" ? {} : category === "action" ? { action_status: "needs_action" } : { category } },
+      })),
+    refetchInterval: 30_000,
+  });
+
+export const useResumes = () =>
+  useQuery({ queryKey: mailKeys.resumes, queryFn: async () => unwrap(await api.GET("/api/v1/resumes")) });
+
+export function useConnectMail() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (body: Schemas["ConnectIn"]) => unwrap(await api.POST("/api/v1/mail/connect", { body })),
+    onSuccess: (data) => {
+      // Gmail / Outlook: consent happens on the provider's page, in a new tab.
+      if (data.authorization_url) window.open(data.authorization_url, "_blank", "noopener");
+      invalidate(mailKeys.status);
+    },
+  });
+}
+
+export function useDisconnectMail() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async () => unwrap(await api.DELETE("/api/v1/mail")),
+    onSuccess: () => invalidate(mailKeys.status),
+  });
+}
+
+export function usePollMail() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async () => unwrap(await api.POST("/api/v1/mail/poll")),
+    onSettled: () => invalidate(mailKeys.status, mailKeys.allEmails, flowKeys.decisions, flowKeys.workflows, flowKeys.applications),
+  });
+}

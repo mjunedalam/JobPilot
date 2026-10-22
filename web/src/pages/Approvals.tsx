@@ -14,6 +14,8 @@ import {
 import { H3Review } from "../components/approvals/H3Review";
 import { H4Questions } from "../components/approvals/H4Questions";
 import { H5Preview } from "../components/approvals/H5Preview";
+import { H6Email } from "../components/approvals/H6Email";
+import { H7Reply } from "../components/approvals/H7Reply";
 import { Badge, Button, Empty, ErrorNote, Lamp, Panel } from "../components/ui";
 import { relativeTime } from "../lib/format";
 
@@ -21,10 +23,13 @@ const TITLES: Record<string, { eyebrow: string; title: string }> = {
   H3: { eyebrow: "H3 · job approval", title: "Which jobs should JobPilot apply to?" },
   H4: { eyebrow: "H4 · a question needs you", title: "Answer before it continues" },
   H5: { eyebrow: "H5 · pre-submit preview", title: "Review the filled application" },
+  H6: { eyebrow: "H6 · an email needs you", title: "Reply, or set it aside?" },
+  H7: { eyebrow: "H7 · reply approval", title: "Approve the reply before it is sent" },
 };
 
 const STATUS_TONE: Record<string, "go" | "amber" | "stop" | "sky" | "neutral"> = {
-  applied: "go", applying: "sky", failed: "stop", skipped: "neutral",
+  applied: "go", applying: "sky", failed: "stop", skipped: "neutral", viewed: "sky",
+  shortlisted: "sky", interview: "amber", offer: "go", rejected: "stop",
 };
 
 function DecisionCard({ decision }: { decision: Decision }) {
@@ -34,6 +39,8 @@ function DecisionCard({ decision }: { decision: Decision }) {
       {decision.checkpoint === "H3" && <H3Review key={decision.interrupt_id} decision={decision} />}
       {decision.checkpoint === "H4" && <H4Questions key={decision.interrupt_id} decision={decision} />}
       {decision.checkpoint === "H5" && <H5Preview key={decision.interrupt_id} decision={decision} />}
+      {decision.checkpoint === "H6" && <H6Email key={decision.interrupt_id} decision={decision} />}
+      {decision.checkpoint === "H7" && <H7Reply key={decision.interrupt_id} decision={decision} />}
     </Panel>
   );
 }
@@ -68,6 +75,7 @@ function AppRow({ app }: { app: ApplicationRow }) {
 export function Approvals() {
   const workflows = useWorkflows();
   const running = (workflows.data ?? []).some((r) => r.status === "running");
+  const applyRunning = (workflows.data ?? []).some((r) => r.kind === "apply" && r.status === "running");
   const decisions = useDecisions(running);
   const applications = useApplications(running);
   const client = useQueryClient();
@@ -81,8 +89,9 @@ export function Approvals() {
     wasRunning.current = running;
   }, [running, client]);
   const start = useStartApply();
-  const latest = workflows.data?.[0];
+  const latest = workflows.data?.find((r) => r.kind === "apply");
   const pending = decisions.data ?? [];
+  const applyPending = pending.some((d) => d.kind === "apply");
 
   return (
     <div className="page">
@@ -90,13 +99,15 @@ export function Approvals() {
         <p className="eyebrow">Cockpit</p>
         <h1 className="page-title">Approvals</h1>
         <p className="page-lede">
-          Every application stops here for you: which jobs (H3), anything it can't answer
-          confidently (H4), and the exact form before it is sent (H5). Decisions survive restarts.
+          Everything that acts on your behalf stops here first: which jobs (H3), anything it
+          can't answer confidently (H4), the exact form before it is sent (H5), emails that need
+          you (H6) and every reply before it goes out (H7). Decisions survive restarts.
         </p>
       </header>
 
-      <Panel eyebrow="Run" title={running ? "Working…" : pending.length ? "Waiting for you" : "Ready"}
-             actions={<Button variant="primary" busy={start.isPending} disabled={running || pending.length > 0}
+      <Panel eyebrow="Apply run" title={applyRunning ? "Working…" : applyPending ? "Waiting for you" : "Ready"}
+             actions={<Button variant="primary" busy={start.isPending}
+                              disabled={applyRunning || applyPending}
                               onClick={() => start.mutate()}><CirclePlay size={16} /> Review found jobs</Button>}>
         {latest ? (
           <p className="run-line">
