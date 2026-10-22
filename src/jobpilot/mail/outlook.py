@@ -13,6 +13,15 @@ from jobpilot.mail.mime import build_mime, parse_rfc822
 API = "https://graph.microsoft.com/v1.0/me"
 
 
+def _graph_time(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _odata_literal(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
@@ -30,14 +39,22 @@ class OutlookMailbox:
             self._address = str(me.get("mail") or me.get("userPrincipalName") or "")
         return self._address
 
-    def _message(self, message_id: str, conversation_id: str) -> MailMessage:
+    def _message(
+        self, message_id: str, conversation_id: str, received: datetime | None
+    ) -> MailMessage:
         resp = self._http.request("GET", f"{API}/messages/{message_id}/$value")
-        return parse_rfc822(resp.content, message_id=message_id, thread_id=conversation_id)
+        return parse_rfc822(
+            resp.content, message_id=message_id, thread_id=conversation_id, received_at=received
+        )
 
     def _listed(self, url: str, params: dict[str, str]) -> list[MailMessage]:
         data = self._http.json("GET", url, params=params)
         return [
-            self._message(str(m["id"]), str(m.get("conversationId", "")))
+            self._message(
+                str(m["id"]),
+                str(m.get("conversationId", "")),
+                _graph_time(m.get("receivedDateTime")),  # the server's receive time
+            )
             for m in data.get("value", [])
             if "id" in m
         ]
@@ -50,7 +67,7 @@ class OutlookMailbox:
                 "$filter": f"receivedDateTime ge {iso}",
                 "$orderby": "receivedDateTime asc",
                 "$top": str(min(limit, 100)),
-                "$select": "id,conversationId",
+                "$select": "id,conversationId,receivedDateTime",
             },
         )
         return sorted(messages, key=lambda m: m.received_at)
@@ -61,7 +78,7 @@ class OutlookMailbox:
             {
                 "$filter": f"conversationId eq {_odata_literal(thread_id)}",
                 "$top": str(min(limit, 50)),
-                "$select": "id,conversationId",
+                "$select": "id,conversationId,receivedDateTime",
             },
         )
         return sorted(messages, key=lambda m: m.received_at)[-limit:]

@@ -233,3 +233,33 @@ def test_free_slots_skip_busy_time_and_weekends() -> None:
         describe_slot(slots[0], timedelta(hours=1), "Asia/Kolkata")
         == "Monday 26 Oct, 12:00 PM–1:00 PM IST"
     )
+
+
+def test_gmail_pages_to_the_oldest_and_uses_internal_date() -> None:
+    pages = {
+        "": {"messages": [{"id": "new2"}, {"id": "new1"}], "nextPageToken": "p2"},
+        "p2": {"messages": [{"id": "old1"}]},
+    }
+    fetched: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("/messages"):
+            return httpx.Response(200, json=pages[req.url.params.get("pageToken", "")])
+        mid = req.url.path.rsplit("/", 1)[1]
+        fetched.append(mid)
+        internal = {"old1": 1792900000000, "new1": 1792900100000, "new2": 1792900200000}[mid]
+        return httpx.Response(
+            200,
+            json={
+                "id": mid,
+                "threadId": "t",
+                "raw": _raw("interview.eml"),
+                "internalDate": str(internal),
+            },
+        )
+
+    box = GmailMailbox(_authorized(handler, []))
+    out = box.list_since(datetime(2026, 10, 20, tzinfo=UTC), limit=2)
+    # Newest-first listing, paged to the end: the two oldest are processed, in order.
+    assert fetched == ["old1", "new1"] and [m.message_id for m in out] == ["old1", "new1"]
+    assert out[0].received_at == datetime.fromtimestamp(1792900000, tz=UTC)  # not the Date header

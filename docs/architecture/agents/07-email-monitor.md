@@ -48,7 +48,13 @@ Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist,
   Whether action is needed is decided by the category, not by the model. A specific category is
   always kept (small models contradict themselves on `job_related`).
 - `agents/email/linker.py`: same thread, else company (+ title as tie-breaker) matching exactly
-  one application; status only moves forward. A confirmation email settles a submit that went
+  one application; status only moves forward. A status change also needs a verified sender:
+  the sender's own domain is the company's (or a job portal / ATS), and the receiving
+  provider's topmost `Authentication-Results` header says `dmarc=pass`. Otherwise the email
+  is linked with a suggested status for you to judge, so a spoofed "offer" changes nothing.
+- The poll cursor uses the provider's receive time (Gmail `internalDate`, Graph
+  `receivedDateTime`), never the sender's `Date:` header, and never moves past now. Gmail's
+  newest-first listing is paged to the end, so a busy inbox processes its oldest new mail first. A confirmation email settles a submit that went
   out without one ("needs manual check" → applied).
 - `agents/email/otp.py`: the Portal agent's `OtpSource`: the newest code from the portal's own
   registrable domain within the last 10 minutes (a caller cannot widen it). Never stored or logged.

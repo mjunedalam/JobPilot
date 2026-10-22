@@ -265,3 +265,71 @@ def test_otp_only_from_the_portal_and_recent(sessions, tmp_path) -> None:  # noq
         )
         is None
     )
+
+
+# ---- security: spoofed senders and the poll cursor -----------------------------------------
+
+
+SPOOF = b"""From: "Acme Payments HR" <acme.payments.hr@gmail.com>
+To: asha.rao@example.com
+Subject: Offer letter - Senior Backend Engineer at Acme Payments
+Date: Wed, 21 Oct 2026 11:00:00 +0530
+Message-ID: <spoof-1@gmail.com>
+Content-Type: text/plain; charset=utf-8
+
+We are pleased to extend an offer for the Senior Backend Engineer role at Acme Payments.
+"""
+
+
+def test_spoofed_sender_links_but_never_changes_status(setup, sessions, tmp_path) -> None:  # noqa: ANN001
+    make, ids = setup
+    for p in (tmp_path / "mailbox" / "inbox").glob("*.eml"):
+        p.unlink()
+    (tmp_path / "mailbox" / "inbox" / "spoof.eml").write_bytes(SPOOF)
+    monitor, _ = make(FakeLLM(EmailTriage(job_related=True, category="offer", summary="An offer")))
+    report = monitor.poll()
+    assert report.linked == 1 and report.status_changes == []
+    with session_scope(sessions) as s:
+        assert s.get(Application, ids["acme"]).status == "applied"
+        [row] = s.query(Email).all()
+        assert "suggests offer (sender not verified)" in row.link_reason
+
+
+def test_status_changes_need_dmarc_pass_on_real_providers(session) -> None:  # noqa: ANN001
+    from email import message_from_bytes, policy
+
+    from jobpilot.mail.mime import dmarc_verdict
+
+    app_id = _application(session, "Acme Payments", "Senior Backend Engineer")
+    raw = (FIX / "interview.eml").read_bytes()
+    passed = b"Authentication-Results: mx.google.com; dmarc=pass header.from=acme-payments.com\n"
+    forged_below = b"Authentication-Results: mx.google.com; dmarc=fail\n" + passed
+
+    def verdict(extra: bytes) -> bool | None:
+        return dmarc_verdict(message_from_bytes(extra + raw, policy=policy.default))
+
+    assert verdict(passed) is True
+    assert verdict(forged_below) is False  # only the topmost (provider-added) header counts
+    assert verdict(b"") is None
+    check = EmailMonitor._sender_verified
+    plain = parse_rfc822(raw, message_id="m")
+    signed = parse_rfc822(passed + raw, message_id="m")
+    assert check(session, signed, app_id, "gmail") is True
+    assert check(session, plain, app_id, "gmail") is False  # no verdict: not trusted
+    assert check(session, plain, app_id, "local") is True  # the dev mailbox has none
+
+
+def test_future_dated_mail_cannot_push_the_cursor_ahead(setup, sessions, tmp_path) -> None:  # noqa: ANN001
+    make, ids = setup
+    inbox = tmp_path / "mailbox" / "inbox"
+    for p in inbox.glob("*.eml"):
+        p.unlink()
+    future = (
+        (FIX / "rejection.eml")
+        .read_bytes()
+        .replace(b"Wed, 21 Oct 2026 10:15:00 +0530", b"Mon, 01 Jan 2035 00:00:00 +0000")
+    )
+    (inbox / "future.eml").write_bytes(future)
+    monitor, _ = make(FakeLLM(EmailTriage(job_related=True, category="rejection")))
+    monitor.poll()
+    assert ids["cursor"][0] <= datetime.now(UTC)

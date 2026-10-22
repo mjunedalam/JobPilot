@@ -31,10 +31,15 @@ class MailMessage:
     cc: tuple[str, ...]
     subject: str
     body: str  # plain text, truncated to MAX_BODY_CHARS
-    received_at: datetime  # timezone-aware
+    # Timezone-aware. From the provider's own receive time (Gmail internalDate, Graph
+    # receivedDateTime) where there is one; the sender-controlled Date header otherwise.
+    received_at: datetime
     rfc_message_id: str = ""  # the Message-ID header, for In-Reply-To / References
     references: str = ""
     reply_to: str = ""
+    # DMARC verdict from the receiving provider's Authentication-Results header: True (pass),
+    # False (fail/none), None (no header, e.g. the local test mailbox).
+    authenticated: bool | None = None
 
     @property
     def sender_address(self) -> str:

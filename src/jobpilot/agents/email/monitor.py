@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from jobpilot.agents.email.linker import advance_status, find_application
+from jobpilot.agents.email.linker import CATEGORY_STATUS, advance_status, find_application
 from jobpilot.agents.email.rules import (
     NEEDS_ACTION,
     SUGGESTED_ACTION,
@@ -29,6 +29,7 @@ from jobpilot.agents.email.rules import (
     is_otp_message,
     job_signal,
     rule_category,
+    sender_domain_matches,
 )
 from jobpilot.core.audit import log_action
 from jobpilot.core.db import session_scope
@@ -85,6 +86,7 @@ class _Message(BaseModel):
     rfc_message_id: str = ""
     references: str = ""
     reply_to: str = ""
+    authenticated: bool | None = None
 
     def to_mail(self) -> MailMessage:
         data = self.model_dump()
@@ -208,7 +210,8 @@ class EmailMonitor:
                 newest = since
                 for raw in listed.messages:
                     message = raw.to_mail()
-                    newest = max(newest, message.received_at)
+                    # Never past now: a future timestamp must not hide the mail after it.
+                    newest = max(newest, min(message.received_at, self._now()))
                     self._handle(harness, mailbox.provider, listed.address, message, report)
                 report.fetched = len(listed.messages)
         except MailAuthError as exc:
@@ -257,7 +260,9 @@ class EmailMonitor:
         if not job_related and not signal.strong:
             report.ignored += 1
             return
-        email_id, needs_action = self._store(key, message, triage, source, signal, report)
+        email_id, needs_action = self._store(
+            key, message, triage, source, signal, report, provider=provider
+        )
         report.stored += 1
         if needs_action:
             report.needs_action += 1
@@ -300,6 +305,8 @@ class EmailMonitor:
         source: str,
         signal: Signal,
         report: PollReport,
+        *,
+        provider: str,
     ) -> tuple[int, bool]:
         category = Category(triage.category)
         needs_action = NEEDS_ACTION[category]
@@ -325,13 +332,19 @@ class EmailMonitor:
             s.add(row)
             s.flush()
             link = find_application(s, message, triage.company)
-            changed = None
+            changed = suggested = None
             if link is not None:
                 row.linked_application_id, row.link_reason = link.application_id, link.reason
                 report.linked += 1
-                changed = advance_status(s, link.application_id, category)
-                if changed:
-                    report.status_changes.append(f"application {link.application_id} → {changed}")
+                if self._sender_verified(s, message, link.application_id, provider):
+                    changed = advance_status(s, link.application_id, category)
+                    if changed:
+                        note = f"application {link.application_id} → {changed}"
+                        report.status_changes.append(note)
+                elif (target := CATEGORY_STATUS.get(category)) is not None:
+                    # Anyone can write a company's name in From: suggest, don't change.
+                    suggested = target.value
+                    row.link_reason = f"{link.reason}; suggests {suggested} (sender not verified)"
             log_action(
                 s,
                 ACTOR,
@@ -344,9 +357,27 @@ class EmailMonitor:
                     "signal": signal.reason,
                     "linked_application_id": row.linked_application_id,
                     "status_change": changed,
+                    "suggested_status": suggested,
+                    "authenticated": message.authenticated,
                 },
             )
             return row.id, needs_action
+
+    @staticmethod
+    def _sender_verified(
+        s: Session, message: MailMessage, application_id: int, provider: str
+    ) -> bool:
+        """An email may change an application's status only if it comes from the company's own
+        domain (or a job portal / ATS) and the receiving provider says it passed DMARC. The
+        local test mailbox has no authentication results and is trusted as-is."""
+        company = s.scalar(
+            select(Job.company)
+            .join(Application, Application.job_id == Job.id)
+            .where(Application.id == application_id)
+        )
+        if company is None or not sender_domain_matches(message, company):
+            return False
+        return provider == "local" or message.authenticated is True
 
     def _raise_h6(self, h: AgentHarness, email_id: int) -> None:
         with session_scope(self._sessions) as s:

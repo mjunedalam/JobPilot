@@ -167,8 +167,19 @@ def mentions_company(message: MailMessage, company: str) -> bool:
     if re.search(rf"(?<![a-z0-9]){re.escape(key)}(?![a-z0-9])", haystack):
         return True
     domain = domain_of(message.sender)
-    label = registrable_domain(domain).split(".")[0] if domain else ""
+    label = registrable_domain(domain).split(".")[0].replace("-", "") if domain else ""
     return bool(label) and label == key.replace(" ", "")
+
+
+def sender_domain_matches(message: MailMessage, company: str) -> bool:
+    """The sender's own domain is the company's (acme-payments.com for "Acme Payments") or a
+    job portal / ATS. Display names and body text don't count: anyone can write those."""
+    if is_job_sender(message):
+        return True
+    domain = domain_of(message.sender)
+    key = normalize_company(company).replace(" ", "")
+    label = registrable_domain(domain).split(".")[0].replace("-", "") if domain else ""
+    return len(key) >= 3 and label == key
 
 
 @dataclass(frozen=True)
