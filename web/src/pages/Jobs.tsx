@@ -23,7 +23,7 @@ export function Jobs() {
         <h1 className="page-title">Jobs</h1>
         <p className="page-lede">
           Recent postings from your portals and any careers page, merged across sources and ranked
-          against your profile. Approving and applying arrive in Phase 3.
+          against your profile. Approve the ones to apply to on the Approvals page.
         </p>
       </header>
 
