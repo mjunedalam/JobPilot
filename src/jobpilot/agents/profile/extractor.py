@@ -9,6 +9,7 @@ from jobpilot.llm.base import SupportsStructured
 from jobpilot.prompts import load_prompt
 
 MAX_RESUME_CHARS = 60_000
+MAX_SKILLS = 40
 PROMPT_NAME = "profile_extraction"
 
 
@@ -33,4 +34,5 @@ class ProfileExtractor:
         # Only resume facts cross into the profile, whatever the model returned. Salary, notice,
         # experience and preferences are left empty so the user is asked for them.
         facts = result.value.model_dump(include=set(ResumeFacts.model_fields))
+        facts["skills"] = facts["skills"][:MAX_SKILLS]
         return CandidateProfile.model_validate(facts)

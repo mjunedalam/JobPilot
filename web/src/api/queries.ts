@@ -6,6 +6,7 @@ export type Provider = Schemas["ProviderOut"];
 export type Route = Schemas["RouteOut"];
 export type Preset = Schemas["PresetOut"];
 export type Profile = Schemas["CandidateProfile"];
+export type ImportResult = Schemas["ImportResultOut"];
 
 export const keys = {
   health: ["health"] as const,

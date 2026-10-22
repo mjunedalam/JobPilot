@@ -1,6 +1,6 @@
 import { FileUp } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { useImportResume } from "../../api/queries";
+import { useImportResume, type ImportResult } from "../../api/queries";
 import { Button, ErrorNote } from "../ui";
 
 const ACCEPT = ".pdf,.docx";
@@ -48,8 +48,9 @@ export function ResumeImport() {
         }}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
-        onClick={() => input.current?.click()}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && input.current?.click()}
+        onClick={() => !importer.isPending && input.current?.click()}
+        onKeyDown={(e) => !importer.isPending && (e.key === "Enter" || e.key === " ") && input.current?.click()}
+        aria-disabled={importer.isPending || undefined}
         role="button"
         tabIndex={0}
         aria-label="Choose a resume file"
@@ -84,19 +85,35 @@ export function ResumeImport() {
         </div>
       )}
       {importer.isPending && (
-        <p className="muted import-note">
-          Your extraction model is reading the resume. Local models can take a minute.
+        <p className="muted import-note" role="status">
+          Your extraction model is reading the whole resume. On a local model this usually takes
+          1–4 minutes; it is working even while this counter runs. Keep this page open.
         </p>
       )}
-      {importer.data && (
-        <p className="trial trial-ok" role="status">
-          {importer.data.version
-            ? `Saved as profile version ${importer.data.version}.`
-            : "No changes: the profile already had this information."}{" "}
-          {importer.data.missing.length > 0 && `${importer.data.missing.length} details still needed below.`}
-        </p>
-      )}
+      {importer.data && <ImportSummary result={importer.data} />}
       <ErrorNote error={importer.error} />
+    </div>
+  );
+}
+
+const label = (field: string) => field.replace(/_/g, " ");
+
+function ImportSummary({ result }: { result: ImportResult }) {
+  return (
+    <div className="trial trial-ok" role="status">
+      <p>
+        {result.version
+          ? `Saved as profile version ${result.version}.`
+          : "No changes: the profile already had this information."}{" "}
+        {result.missing.length > 0 && `${result.missing.length} details still needed below.`}
+      </p>
+      {result.updated.length > 0 && <p>Filled from the resume: {result.updated.map(label).join(", ")}.</p>}
+      {result.kept.length > 0 && (
+        <p>
+          Kept your existing {result.kept.map(label).join(", ")}: the resume says something
+          different. Edit those fields below if the resume is right.
+        </p>
+      )}
     </div>
   );
 }

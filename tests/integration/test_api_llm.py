@@ -174,6 +174,42 @@ def test_profile_import_upload(
     assert response.status_code == 200, body
     assert body["data"]["version"] == 1 and body["data"]["resume_label"] == "main"
     assert any(m["field"] == "phone" for m in body["data"]["missing"])
+    assert {"email", "full_name"} <= set(body["data"]["updated"]) and body["data"]["kept"] == []
+
+
+def test_profile_import_reports_kept_fields_and_runs_one_at_a_time(
+    client: TestClient, ctx: AppContext, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from jobpilot.agents.profile.repository import ProfileRepository
+    from jobpilot.api.routes import profile as profile_routes
+    from jobpilot.core.db import session_scope
+
+    with session_scope(ctx.sessions) as s:
+        ProfileRepository(s).save(CandidateProfile(full_name="Asha Rao"), source="qa")
+    monkeypatch.setattr(
+        AppContext, "gateway", FakeLLM(CandidateProfile(full_name="Juned Alam", email="j@x.com"))
+    )
+    resume = tmp_path / "cv.docx"
+    document = docx.Document()
+    document.add_paragraph("Juned Alam, Engineer")
+    document.save(str(resume))
+
+    assert profile_routes._IMPORT_LOCK.acquire(blocking=False)  # an import is running
+    try:
+        with resume.open("rb") as fh:
+            busy = client.post(
+                "/api/v1/profile/import", headers=AUTH, files={"file": ("cv.docx", fh)}
+            )
+        assert busy.status_code == 409 and "already being read" in busy.json()["error"]["message"]
+    finally:
+        profile_routes._IMPORT_LOCK.release()
+
+    with resume.open("rb") as fh:
+        data = client.post(
+            "/api/v1/profile/import", headers=AUTH, files={"file": ("cv.docx", fh)}
+        ).json()["data"]
+    # The confirmed name wins and is reported, so the user can see why it didn't change.
+    assert data["kept"] == ["full_name"] and data["updated"] == ["email"]
 
 
 def test_profile_import_rejects_wrong_type(client: TestClient) -> None:

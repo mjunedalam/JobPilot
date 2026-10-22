@@ -338,3 +338,13 @@ class TestOpenAICompatibleProvider:
         provider, _ = self._provider("nope", "still nope")
         with pytest.raises(LLMOutputInvalid):
             provider.structured(model="llama", system="s", user="u", schema=Answer, max_tokens=50)
+
+
+def test_anthropic_without_a_key_is_a_clear_llm_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    from jobpilot.llm.anthropic_provider import AnthropicProvider
+    from jobpilot.llm.base import LLMError
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    with pytest.raises(LLMError, match="needs an API key"):
+        AnthropicProvider().list_models()

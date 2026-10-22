@@ -48,6 +48,20 @@ def merge_profiles(base: CandidateProfile, incoming: CandidateProfile) -> Candid
     return CandidateProfile.model_validate(merged)
 
 
+def kept_over_resume(base: CandidateProfile, incoming: CandidateProfile) -> list[str]:
+    """Single-value fields where the resume says something different from the profile, and the
+    profile's value was kept (see merge_profiles). Shown so the user can correct either."""
+    base_d, inc_d = base.model_dump(mode="json"), incoming.model_dump(mode="json")
+    return [
+        f
+        for f, v in base_d.items()
+        if not isinstance(v, list | dict)
+        and v not in EMPTY
+        and inc_d[f] not in EMPTY
+        and v != inc_d[f]
+    ]
+
+
 def apply_patch(base: CandidateProfile, patch: dict[str, Any]) -> CandidateProfile:
     """Explicit user edits overwrite. Unknown fields are rejected by validation."""
     unknown = set(patch) - set(CandidateProfile.model_fields)

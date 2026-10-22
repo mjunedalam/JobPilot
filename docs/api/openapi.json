@@ -4012,6 +4012,22 @@
             },
             "type": "object",
             "title": "Usage"
+          },
+          "updated": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Updated",
+            "default": []
+          },
+          "kept": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Kept",
+            "default": []
           }
         },
         "type": "object",

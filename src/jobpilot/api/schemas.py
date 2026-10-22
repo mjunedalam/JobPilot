@@ -62,6 +62,8 @@ class ImportResultOut(BaseModel):
     resume_label: str
     missing: list[MissingFieldOut]
     usage: dict[str, float]
+    updated: list[str] = []  # fields the resume filled in
+    kept: list[str] = []  # your existing value kept over a different one in the resume
 
 
 class ProfileQAIn(BaseModel):

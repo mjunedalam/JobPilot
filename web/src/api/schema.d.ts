@@ -1491,6 +1491,16 @@ export interface components {
             usage: {
                 [key: string]: number;
             };
+            /**
+             * Updated
+             * @default []
+             */
+            updated: string[];
+            /**
+             * Kept
+             * @default []
+             */
+            kept: string[];
         };
         /** JobOut */
         JobOut: {

@@ -47,6 +47,8 @@ class AnthropicProvider:
             raise LLMError(f"anthropic {exc.status_code}: request rejected") from exc
         except anthropic.APIConnectionError as exc:
             raise RetryableLLMError("could not reach the Anthropic API") from exc
+        except TypeError as exc:  # the SDK's "no credentials" error
+            raise _missing_key(exc) from exc
 
         if response.stop_reason == "refusal":
             raise LLMRefusal("Claude declined this request")
@@ -64,3 +66,13 @@ class AnthropicProvider:
             raise LLMError(f"anthropic {exc.status_code}: could not list models") from exc
         except anthropic.APIConnectionError as exc:
             raise RetryableLLMError("could not reach the Anthropic API") from exc
+        except TypeError as exc:
+            raise _missing_key(exc) from exc
+
+
+def _missing_key(exc: TypeError) -> LLMError:
+    if "authentication" in str(exc).lower():
+        return LLMError(
+            "Anthropic needs an API key: add it on the Models page or set ANTHROPIC_API_KEY"
+        )
+    return LLMError(f"Anthropic request could not be built: {type(exc).__name__}")

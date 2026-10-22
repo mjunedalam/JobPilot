@@ -2,9 +2,39 @@
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
+_YEAR = re.compile(r"(?:19|20)\d{2}")
+_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _year(value: Any) -> Any:
+    """Resumes write "2011 – 2015" or "May 2019"; keep the last year (graduation / award).
+    A string with no year becomes None instead of failing the whole extraction."""
+    if isinstance(value, str):
+        years = _YEAR.findall(value)
+        return int(years[-1]) if years else None
+    return value
+
+
+def _years(value: Any) -> Any:
+    """ "3+ years" → 3, "two" → None."""
+    if isinstance(value, str):
+        m = _NUMBER.search(value)
+        return float(m.group()) if m else None
+    return value
 
 
 class WorkMode(StrEnum):
@@ -19,6 +49,11 @@ class Skill(BaseModel):
     name: str
     years: float | None = None
 
+    @field_validator("years", mode="before")
+    @classmethod
+    def _lenient_years(cls, value: Any) -> Any:
+        return _years(value)
+
     @field_validator("years")
     @classmethod
     def _zero_means_unknown(cls, value: float | None) -> float | None:
@@ -29,9 +64,19 @@ class Skill(BaseModel):
 class Education(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    degree: str
-    institution: str = ""
-    year: int | None = None
+    degree: str = Field(validation_alias=AliasChoices("degree", "name", "title", "qualification"))
+    institution: str = Field(
+        "", validation_alias=AliasChoices("institution", "school", "university", "college")
+    )
+    year: int | None = Field(
+        None,
+        validation_alias=AliasChoices("year", "graduation_year", "end_year", "duration", "dates"),
+    )
+
+    @field_validator("year", mode="before")
+    @classmethod
+    def _lenient_year(cls, value: Any) -> Any:
+        return _year(value)
 
 
 class Certification(BaseModel):
@@ -39,7 +84,15 @@ class Certification(BaseModel):
 
     name: str
     issuer: str = ""
-    year: int | None = None
+    year: int | None = Field(
+        None,
+        validation_alias=AliasChoices("year", "graduation_year", "end_year", "duration", "dates"),
+    )
+
+    @field_validator("year", mode="before")
+    @classmethod
+    def _lenient_year(cls, value: Any) -> Any:
+        return _year(value)
 
 
 class Money(BaseModel):
@@ -105,6 +158,31 @@ class ResumeFacts(BaseModel):
     education: list[Education] = Field(default_factory=list)
     certifications: list[Certification] = Field(default_factory=list)
     links: Links = Field(default_factory=Links)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_unreadable_entries(cls, data: Any) -> Any:
+        """One malformed list entry must not fail the whole resume: that costs a full second
+        model run (measured ~80 s on a laptop). Unreadable entries are dropped, never guessed."""
+        if not isinstance(data, dict):
+            return data
+        models: dict[str, type[BaseModel]] = {
+            "skills": Skill, "education": Education, "certifications": Certification,
+        }  # fmt: skip
+        cleaned = dict(data)
+        for key, model in models.items():
+            items = cleaned.get(key)
+            if not isinstance(items, list):
+                continue
+            kept = []
+            for item in items:
+                try:
+                    model.model_validate(item)
+                except ValidationError:
+                    continue
+                kept.append(item)
+            cleaned[key] = kept
+        return cleaned
 
 
 USER_ONLY_FIELDS: frozenset[str] = frozenset(CandidateProfile.model_fields) - frozenset(

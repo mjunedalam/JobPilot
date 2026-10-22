@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import threading
 from pathlib import Path
 from typing import Annotated
 
@@ -25,6 +26,8 @@ from jobpilot.api.schemas import (
 from jobpilot.core.db import session_scope
 from jobpilot.harness.errors import HarnessError
 from jobpilot.llm.base import LLMError
+
+_IMPORT_LOCK = threading.Lock()
 
 router = APIRouter(prefix="/profile", tags=["profile"], dependencies=AUTH)
 
@@ -88,6 +91,20 @@ def import_resume(
     if len(data) > MAX_RESUME_BYTES:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "resume is larger than 10 MB")
 
+    # One at a time: a local model serves requests in turn, so a second import only queues.
+    if not _IMPORT_LOCK.acquire(blocking=False):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "a resume is already being read; wait for it to finish"
+        )
+    try:
+        return _import(ctx, rid, file, label, data, suffix)
+    finally:
+        _IMPORT_LOCK.release()
+
+
+def _import(
+    ctx: Ctx, rid: str, file: UploadFile, label: str | None, data: bytes, suffix: str
+) -> Envelope[ImportResultOut]:
     harness = ctx.harness(PROFILE)
     stem = Path(file.filename or "resume").stem[:80] or "resume"
     with tempfile.TemporaryDirectory() as tmp:
@@ -104,6 +121,8 @@ def import_resume(
                         MissingFieldOut(field=f, question=q) for f, q in result.missing.items()
                     ],
                     usage=harness.usage,
+                    updated=list(result.updated),
+                    kept=list(result.kept),
                 )
         except ResumeParseError as exc:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc

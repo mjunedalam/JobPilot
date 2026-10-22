@@ -9,7 +9,12 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from jobpilot.agents.profile.extractor import ProfileExtractor
-from jobpilot.agents.profile.merge import apply_patch, merge_profiles
+from jobpilot.agents.profile.merge import (
+    apply_patch,
+    diff_profiles,
+    kept_over_resume,
+    merge_profiles,
+)
 from jobpilot.agents.profile.parser import extract_text
 from jobpilot.agents.profile.repository import AnswerBank, ProfileRepository, ResumeRepository
 from jobpilot.agents.profile.schema import CandidateProfile, missing_required_fields
@@ -22,6 +27,8 @@ class ImportResult:
     version: int | None
     resume: ResumeVersion
     missing: dict[str, str]
+    updated: tuple[str, ...] = ()  # fields this resume filled in or added to
+    kept: tuple[str, ...] = ()  # fields where the profile's value won over a different one
 
 
 class ProfileAgent:
@@ -38,7 +45,8 @@ class ProfileAgent:
             raise RuntimeError("ProfileAgent was built without an extractor")
         text = extract_text(path)
         extracted = self._extractor.extract(text)
-        merged = merge_profiles(self.profiles.current(), extracted)
+        current = self.profiles.current()
+        merged = merge_profiles(current, extracted)
         row = self.profiles.save(merged, source="resume")
         resume = self.resumes.add(path, label or path.stem)
         return ImportResult(
@@ -46,6 +54,8 @@ class ProfileAgent:
             version=row.version if row else None,
             resume=resume,
             missing=missing_required_fields(merged),
+            updated=tuple(sorted(diff_profiles(current, merged))),
+            kept=tuple(sorted(kept_over_resume(current, extracted))),
         )
 
     def update(self, patch: dict[str, Any], *, source: str = "user") -> CandidateProfile:
