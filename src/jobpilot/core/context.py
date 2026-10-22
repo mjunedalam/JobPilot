@@ -12,11 +12,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from jobpilot.agents.application.agent import ApplicationAgent
 from jobpilot.agents.application.service import ApplicationService
+from jobpilot.agents.email.monitor import EmailMonitor
+from jobpilot.agents.email.otp import EmailOtpSource
 from jobpilot.agents.orchestrator.apply_graph import build_apply_graph
+from jobpilot.agents.orchestrator.reply_graph import build_reply_graph
 from jobpilot.agents.orchestrator.runtime import WorkflowRuntime
 from jobpilot.agents.portal.agent import PortalConnector
+from jobpilot.agents.reply.service import ReplyService
 from jobpilot.agents.search.agent import SearchAgent
-from jobpilot.agents.specs import APPLICATION
+from jobpilot.agents.specs import APPLICATION, EMAIL, REPLY
 from jobpilot.core.config import AppConfig, Settings
 from jobpilot.core.crypto import Vault, VaultError
 from jobpilot.core.db import make_engine, make_session_factory, session_scope
@@ -25,6 +29,8 @@ from jobpilot.harness.circuit import CircuitBreaker
 from jobpilot.harness.runner import AgentHarness, AgentSpec
 from jobpilot.harness.tools import ToolRegistry
 from jobpilot.llm.settings import PrivacyState, RuntimeGateway
+from jobpilot.mail.service import MailService
+from jobpilot.notifications import Dispatcher, build_dispatcher
 from jobpilot.observability.tracing import Tracer, build_tracer
 from jobpilot.portals.base import PortalAdapter
 from jobpilot.portals.browser import ApplyBrowser, PageFetcher, PlaywrightFetcher
@@ -188,8 +194,78 @@ class AppContext:
                     preview=app_cfg.presubmit_preview,
                     delay=delay,
                     checkpointer=saver,
-                )
+                ),
+                "reply": lambda saver: build_reply_graph(self.reply_service(), checkpointer=saver),
             },
+        )
+
+    # ---- mail (Phase 4) -------------------------------------------------------------------
+
+    @cached_property
+    def mail(self) -> MailService:
+        return MailService(
+            sessions=self.sessions,
+            vault=self.optional_vault,
+            settings=self.settings,
+            config=self.config.email,
+            mailbox_dir=self.settings.data_dir / "mailbox",
+        )
+
+    @cached_property
+    def notifier(self) -> Dispatcher:
+        import httpx
+
+        return build_dispatcher(
+            self.config.notifications.channels,
+            telegram_token=self.settings.telegram_bot_token,
+            telegram_chat_id=self.config.notifications.telegram_chat_id,
+            webhook_url=self.settings.jobpilot_notify_webhook_url,
+            http=httpx.Client(follow_redirects=False),
+        )
+
+    def _harness_with(self, spec: AgentSpec, registry: ToolRegistry) -> AgentHarness:
+        return AgentHarness(
+            spec,
+            registry=registry,
+            llm=self.gateway,
+            sessions=self.sessions,
+            kill_switch=self.kill_switch,
+            tracer=self.tracer,
+            circuit=self.circuit,
+        )
+
+    def _start_reply(self, email_id: int) -> str | None:
+        thread_id, _ = self.workflows.start("reply", {"email_id": email_id})
+        return thread_id
+
+    @cached_property
+    def email_monitor(self) -> EmailMonitor:
+        return EmailMonitor(
+            sessions=self.sessions,
+            mailbox=self.mail.mailbox,
+            harness_for=lambda registry: self._harness_with(EMAIL, registry),
+            dispatcher=self.notifier,
+            cursor=self.mail.cursor,
+            record_poll=self.mail.record_poll,
+            on_needs_action=self._start_reply,
+            max_messages=self.config.email.max_messages_per_poll,
+        )
+
+    def reply_service(self) -> ReplyService:
+        return ReplyService(
+            sessions=self.sessions,
+            mail=self.mail,
+            harness_for=lambda registry: self._harness_with(REPLY, registry),
+            resume_dir=self.resume_dir,
+        )
+
+    def otp_source(self) -> EmailOtpSource:
+        from datetime import timedelta
+
+        return EmailOtpSource(
+            sessions=self.sessions,
+            mailbox=self.mail.mailbox,
+            max_age_limit=timedelta(minutes=self.config.email.otp_max_age_minutes),
         )
 
     def harness(self, spec: AgentSpec) -> AgentHarness:

@@ -128,9 +128,20 @@ class ApplicationConfig(_Frozen):
     max_delay_seconds: int = Field(75, ge=0)
 
 
+class CalendarConfig(_Frozen):
+    timezone: str = "Asia/Kolkata"
+    work_start: str = Field("10:00", pattern=r"^\d{2}:\d{2}$")
+    work_end: str = Field("18:00", pattern=r"^\d{2}:\d{2}$")
+    slot_minutes: int = Field(60, ge=15, le=240)
+    days_ahead: int = Field(5, ge=1, le=14)
+
+
 class EmailConfig(_Frozen):
     poll_interval_minutes: int = Field(15, ge=1)
     otp_max_age_minutes: int = Field(10, ge=1)
+    first_poll_lookback_days: int = Field(7, ge=1, le=60)
+    max_messages_per_poll: int = Field(50, ge=1, le=500)
+    calendar: CalendarConfig = Field(default_factory=CalendarConfig)
 
 
 class PortalsConfig(_Frozen):
@@ -144,7 +155,9 @@ class PortalsConfig(_Frozen):
 
 
 class NotificationsConfig(_Frozen):
+    # desktop | telegram | webhook. The Approvals page always shows H6 regardless.
     channels: tuple[str, ...] = ("desktop",)
+    telegram_chat_id: str = ""
 
 
 class APIConfig(_Frozen):
@@ -183,6 +196,16 @@ class Settings(BaseSettings):
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None
     langfuse_base_url: str | None = None
+    # Mail OAuth apps (Phase 4). Google: a "Desktop app" OAuth client. Microsoft: an app
+    # registration with a "Mobile and desktop" redirect of http://127.0.0.1:<api port>/...
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    ms_client_id: str | None = None
+    ms_client_secret: str | None = None
+    ms_tenant: str = "common"
+    # Notifications (optional): Telegram bot token, and a webhook URL for any other channel.
+    telegram_bot_token: str | None = None
+    jobpilot_notify_webhook_url: str | None = None
     data_dir: Path = DEFAULT_DATA_DIR
 
     def resolved_database_url(self) -> str:

@@ -150,22 +150,38 @@ class Application(Base):
 
 
 class Email(Base):
+    """A job-related email (non-job mail is never stored)."""
+
     __tablename__ = "emails"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # "<provider>:<provider message id>", unique across connected accounts
     message_id: Mapped[str] = mapped_column(String(300), unique=True)
     thread_id: Mapped[str] = mapped_column(String(300), index=True)
     sender: Mapped[str] = mapped_column(String(300))
+    reply_to: Mapped[str] = mapped_column(String(300), default="")
+    recipients: Mapped[dict[str, Any]] = mapped_column(default=dict)  # {"to": [...], "cc": [...]}
     subject: Mapped[str] = mapped_column(String(500))
     snippet: Mapped[str] = mapped_column(Text, default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    rfc_message_id: Mapped[str] = mapped_column(String(500), default="")
+    references: Mapped[str] = mapped_column(Text, default="")
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    # interview_invite | recruiter_outreach | assessment | rejection | offer |
+    # document_request | application_confirmation | other
     category: Mapped[str] = mapped_column(String(32), default="other", index=True)
     summary: Mapped[str] = mapped_column(Text, default="")
     suggested_action: Mapped[str] = mapped_column(Text, default="")
+    classified_by: Mapped[str] = mapped_column(String(16), default="")  # model | rules
     linked_application_id: Mapped[int | None] = mapped_column(
         ForeignKey("applications.id"), nullable=True
     )
-    action_status: Mapped[str] = mapped_column(String(32), default="new")
+    link_reason: Mapped[str] = mapped_column(String(200), default="")
+    # info | needs_action | drafting | replied | ignored | done
+    action_status: Mapped[str] = mapped_column(String(32), default="info", index=True)
+    workflow_thread_id: Mapped[str] = mapped_column(String(64), default="")
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Draft(Base):
@@ -173,12 +189,35 @@ class Draft(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email_id: Mapped[int] = mapped_column(ForeignKey("emails.id"), index=True)
-    # Each version: {n, to, cc, subject, body, attachments, created_at, sha256}
+    instruction: Mapped[str] = mapped_column(Text, default="")
+    # Append-only. Each version: {n, to, cc, subject, body, attachments, source, warnings,
+    # created_at, sha256}; `sha256` covers exactly what an approval of that version binds.
     versions: Mapped[list[Any]] = mapped_column(default=list)
     approved_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     approved_sha256: Mapped[str] = mapped_column(String(64), default="")
+    # drafting | awaiting_approval | approved | sent | send_unknown | discarded
     status: Mapped[str] = mapped_column(String(32), default="drafting")
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_message_id: Mapped[str] = mapped_column(String(300), default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+
+
+class MailAccount(Base):
+    """The connected mailbox. OAuth tokens are Fernet-encrypted and never logged."""
+
+    __tablename__ = "mail_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider: Mapped[str] = mapped_column(String(16), unique=True)  # gmail | outlook | local
+    address: Mapped[str] = mapped_column(String(300), default="")
+    secret_enc: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    calendar_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    # connected | needs_reconnect | disconnected
+    status: Mapped[str] = mapped_column(String(32), default="connected")
+    status_reason: Mapped[str] = mapped_column(Text, default="")
+    cursor: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AuditLog(Base):

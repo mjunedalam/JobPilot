@@ -37,12 +37,15 @@ Every `{{Hn}}` node is a LangGraph `interrupt()`: state is checkpointed, the pro
 
 Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist, budgets, retries and approval binding apply to every tool call.
 
-## Implementation (Phase 3)
+## Implementation (Phases 3–4)
 
 - `agents/orchestrator/apply_graph.py`: review (H3) → next → attempt → ask_field (H4) /
   ask_preview (H5) / retry / record → next. Pausing nodes only call `interrupt()` and log.
-- `agents/orchestrator/runtime.py`: runs graphs on one background worker (applications strictly
-  one at a time), indexes runs in `workflow_runs`, lists pending decisions, resumes them with
+- `agents/orchestrator/reply_graph.py` (Phase 4): one run per email that needs action:
+  triage (H6) → draft → review (H7) → send, with edit → review (a new version, shown again),
+  regenerate → draft, discard → end. There is no path from an edit to `send`.
+- `agents/orchestrator/runtime.py`: runs graphs on one background worker per workflow kind
+  (applications strictly one at a time; a long apply run never delays a reply), indexes runs in `workflow_runs`, lists pending decisions, resumes them with
   `Command(resume=...)`, and on startup continues runs interrupted by a crash. The LangGraph
   SQLite checkpointer (`data/workflows.db`) holds the state, so pending decisions survive restarts.
 - Answering is race-free: `resume` claims the run with one conditional update

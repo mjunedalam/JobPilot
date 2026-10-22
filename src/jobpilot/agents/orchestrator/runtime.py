@@ -1,9 +1,10 @@
 """Runs workflows in the background and exposes their pending decisions.
 
-One worker thread: applications run strictly one at a time (spec), and Playwright's sync API
-stays on a single thread per run. Decisions are answered by resuming the thread with
-`Command(resume=...)`; the graph state, including pending decisions, lives in the LangGraph
-SQLite checkpointer, so everything survives a restart (`recover()` continues interrupted runs)."""
+One worker thread per workflow kind: applications run strictly one at a time (spec) and
+Playwright's sync API stays on one thread, while a long apply run never delays an email reply.
+Decisions are answered by resuming the thread with `Command(resume=...)`; the graph state,
+including pending decisions, lives in the LangGraph SQLite checkpointer, so everything survives
+a restart (`recover()` continues interrupted runs)."""
 
 from __future__ import annotations
 
@@ -57,7 +58,10 @@ class WorkflowRuntime:
         self._graphs = {kind: factory(self._saver) for kind, factory in graphs.items()}
         self._sessions = sessions
         self._kill = kill_switch
-        self._worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="jobpilot-workflow")
+        self._workers = {
+            kind: ThreadPoolExecutor(max_workers=1, thread_name_prefix=f"jobpilot-{kind}")
+            for kind in graphs
+        }
 
     def _cfg(self, thread_id: str) -> dict[str, Any]:
         return {"configurable": {"thread_id": thread_id}, "recursion_limit": 500}
@@ -96,7 +100,7 @@ class WorkflowRuntime:
         waiting = bool(out.get("__interrupt__")) if isinstance(out, dict) else False
         summary = {
             k: out.get(k)
-            for k in ("results", "applied_count", "stopped_portals")
+            for k in ("results", "applied_count", "stopped_portals", "email_id", "outcome")
             if isinstance(out, dict) and k in out
         }
         self._set(thread_id, "waiting" if waiting else "done", summary=summary)
@@ -107,7 +111,7 @@ class WorkflowRuntime:
         self._kill.check()
         thread_id = uuid.uuid4().hex
         self._set(thread_id, "running", kind=kind)
-        return thread_id, self._worker.submit(self._drive, kind, thread_id, initial or {})
+        return thread_id, self._workers[kind].submit(self._drive, kind, thread_id, initial or {})
 
     def resume(self, thread_id: str, interrupt_id: str, answer: dict[str, Any]) -> Future[None]:
         self._kill.check()
@@ -129,7 +133,7 @@ class WorkflowRuntime:
             claimed = cast(CursorResult[Any], result).rowcount
         if not claimed:
             raise WorkflowError(STALE)
-        return self._worker.submit(self._drive_resume, kind, thread_id, interrupt_id, answer)
+        return self._workers[kind].submit(self._drive_resume, kind, thread_id, interrupt_id, answer)
 
     def _drive_resume(
         self, kind: str, thread_id: str, interrupt_id: str, answer: dict[str, Any]
@@ -158,7 +162,7 @@ class WorkflowRuntime:
             ]
         for thread_id, kind in stuck:
             if kind in self._graphs:
-                self._worker.submit(self._drive, kind, thread_id, None)
+                self._workers[kind].submit(self._drive, kind, thread_id, None)
         return [t for t, _ in stuck]
 
     # ---- reading ----------------------------------------------------------------------
@@ -186,5 +190,6 @@ class WorkflowRuntime:
             return rows
 
     def shutdown(self, wait: bool = False) -> None:
-        self._worker.shutdown(wait=wait, cancel_futures=True)
+        for worker in self._workers.values():
+            worker.shutdown(wait=wait, cancel_futures=True)
         self._conn.close()

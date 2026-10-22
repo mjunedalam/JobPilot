@@ -28,7 +28,9 @@ ALLOWED_TRANSITIONS: dict[JobStatus, frozenset[JobStatus]] = {
     S.VIEWED: frozenset({S.SHORTLISTED, S.INTERVIEW, S.REJECTED}),
     S.SHORTLISTED: frozenset({S.INTERVIEW, S.REJECTED}),
     S.INTERVIEW: frozenset({S.OFFER, S.REJECTED}),
-    S.FAILED: frozenset(),
+    # Only to settle a submit that went out without a confirmation, once a confirmation email
+    # arrives (agents/email/linker.py). A failed job is never applied to again.
+    S.FAILED: frozenset({S.APPLIED}),
     S.SKIPPED: frozenset(),
     S.OFFER: frozenset(),
     S.REJECTED: frozenset(),

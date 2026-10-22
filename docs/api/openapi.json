@@ -3,7 +3,7 @@
   "info": {
     "title": "JobPilot API",
     "summary": "Multi-agent job application assistant with human-in-the-loop controls",
-    "version": "0.2.0"
+    "version": "0.4.0"
   },
   "paths": {
     "/api/v1/health": {
@@ -1532,6 +1532,333 @@
           }
         }
       }
+    },
+    "/api/v1/mail": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Mail Status",
+        "operationId": "mail_status_api_v1_mail_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MailStatusOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Disconnect",
+        "operationId": "disconnect_api_v1_mail_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MailStatusOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/mail/connect": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Connect",
+        "description": "Gmail / Outlook: returns the URL where you grant access; the provider then redirects\nback to this API and the account is saved. Local: a folder mailbox for trying things out.",
+        "operationId": "connect_api_v1_mail_connect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ConnectOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/mail/poll": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Poll Now",
+        "operationId": "poll_now_api_v1_mail_poll_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PollOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/emails": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "List Emails",
+        "operationId": "list_emails_api_v1_emails_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "action_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_EmailOut__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/emails/{email_id}": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Get Email",
+        "operationId": "get_email_api_v1_emails__email_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "email_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Email Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_EmailDetailOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/drafts/{draft_id}": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Get Draft",
+        "operationId": "get_draft_api_v1_drafts__draft_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DraftOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resumes": {
+      "get": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "List Resumes",
+        "operationId": "list_resumes_api_v1_resumes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ResumeOut__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1898,6 +2225,66 @@
         ],
         "title": "Certification"
       },
+      "ConnectIn": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "gmail",
+              "outlook",
+              "local"
+            ],
+            "title": "Provider"
+          },
+          "calendar": {
+            "type": "boolean",
+            "title": "Calendar",
+            "default": false
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Address",
+            "default": "me@jobpilot.local"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider"
+        ],
+        "title": "ConnectIn"
+      },
+      "ConnectOut": {
+        "properties": {
+          "authorization_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorization Url"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MailAccountOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorization_url",
+          "account"
+        ],
+        "title": "ConnectOut"
+      },
       "CredentialsIn": {
         "properties": {
           "username": {
@@ -1975,6 +2362,73 @@
         ],
         "title": "DecisionOut"
       },
+      "DraftOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email_id": {
+            "type": "integer",
+            "title": "Email Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "instruction": {
+            "type": "string",
+            "title": "Instruction"
+          },
+          "versions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Versions"
+          },
+          "approved_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved Version"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email_id",
+          "status",
+          "instruction",
+          "versions",
+          "approved_version",
+          "sent_at",
+          "error"
+        ],
+        "title": "DraftOut"
+      },
       "Education": {
         "properties": {
           "degree": {
@@ -2003,6 +2457,185 @@
           "degree"
         ],
         "title": "Education"
+      },
+      "EmailDetailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "sender": {
+            "type": "string",
+            "title": "Sender"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "snippet": {
+            "type": "string",
+            "title": "Snippet"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "suggested_action": {
+            "type": "string",
+            "title": "Suggested Action"
+          },
+          "classified_by": {
+            "type": "string",
+            "title": "Classified By"
+          },
+          "action_status": {
+            "type": "string",
+            "title": "Action Status"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          },
+          "link_reason": {
+            "type": "string",
+            "title": "Link Reason"
+          },
+          "application": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkedApplicationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflow_thread_id": {
+            "type": "string",
+            "title": "Workflow Thread Id"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "recipients": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Recipients"
+          },
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/DraftOut"
+            },
+            "type": "array",
+            "title": "Drafts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sender",
+          "subject",
+          "snippet",
+          "summary",
+          "category",
+          "suggested_action",
+          "classified_by",
+          "action_status",
+          "received_at",
+          "link_reason",
+          "application",
+          "workflow_thread_id",
+          "body",
+          "recipients",
+          "drafts"
+        ],
+        "title": "EmailDetailOut"
+      },
+      "EmailOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "sender": {
+            "type": "string",
+            "title": "Sender"
+          },
+          "subject": {
+            "type": "string",
+            "title": "Subject"
+          },
+          "snippet": {
+            "type": "string",
+            "title": "Snippet"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "suggested_action": {
+            "type": "string",
+            "title": "Suggested Action"
+          },
+          "classified_by": {
+            "type": "string",
+            "title": "Classified By"
+          },
+          "action_status": {
+            "type": "string",
+            "title": "Action Status"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          },
+          "link_reason": {
+            "type": "string",
+            "title": "Link Reason"
+          },
+          "application": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkedApplicationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflow_thread_id": {
+            "type": "string",
+            "title": "Workflow Thread Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sender",
+          "subject",
+          "snippet",
+          "summary",
+          "category",
+          "suggested_action",
+          "classified_by",
+          "action_status",
+          "received_at",
+          "link_reason",
+          "application",
+          "workflow_thread_id"
+        ],
+        "title": "EmailOut"
       },
       "Envelope_AnswerOut_": {
         "properties": {
@@ -2071,6 +2704,108 @@
         },
         "type": "object",
         "title": "Envelope[CandidateProfile]"
+      },
+      "Envelope_ConnectOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[ConnectOut]"
+      },
+      "Envelope_DraftOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[DraftOut]"
+      },
+      "Envelope_EmailDetailOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmailDetailOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[EmailDetailOut]"
       },
       "Envelope_HealthOut_": {
         "properties": {
@@ -2242,6 +2977,40 @@
         "type": "object",
         "title": "Envelope[LLMSettingsOut]"
       },
+      "Envelope_MailStatusOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MailStatusOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[MailStatusOut]"
+      },
       "Envelope_ModelListOut_": {
         "properties": {
           "success": {
@@ -2275,6 +3044,40 @@
         },
         "type": "object",
         "title": "Envelope[ModelListOut]"
+      },
+      "Envelope_PollOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PollOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[PollOut]"
       },
       "Envelope_PortalOut_": {
         "properties": {
@@ -2628,6 +3431,44 @@
         "type": "object",
         "title": "Envelope[list[DecisionOut]]"
       },
+      "Envelope_list_EmailOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[EmailOut]]"
+      },
       "Envelope_list_JobOut__": {
         "properties": {
           "success": {
@@ -2855,6 +3696,44 @@
         },
         "type": "object",
         "title": "Envelope[list[ProviderOut]]"
+      },
+      "Envelope_list_ResumeOut__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ResumeOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[ResumeOut]]"
       },
       "Envelope_list_RouteOut__": {
         "properties": {
@@ -3267,6 +4146,34 @@
         ],
         "title": "LLMSettingsOut"
       },
+      "LinkedApplicationOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "company",
+          "status"
+        ],
+        "title": "LinkedApplicationOut"
+      },
       "Links": {
         "properties": {
           "linkedin": {
@@ -3324,6 +4231,105 @@
         },
         "type": "object",
         "title": "LoginIn"
+      },
+      "MailAccountOut": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "status_reason": {
+            "type": "string",
+            "title": "Status Reason"
+          },
+          "calendar_enabled": {
+            "type": "boolean",
+            "title": "Calendar Enabled"
+          },
+          "connected_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connected At"
+          },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Polled At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "address",
+          "status",
+          "status_reason",
+          "calendar_enabled",
+          "connected_at",
+          "last_polled_at"
+        ],
+        "title": "MailAccountOut"
+      },
+      "MailStatusOut": {
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MailAccountOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "configured": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Configured"
+          },
+          "poll_interval_minutes": {
+            "type": "integer",
+            "title": "Poll Interval Minutes"
+          },
+          "notifications": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationChannelOut"
+            },
+            "type": "array",
+            "title": "Notifications"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account",
+          "configured",
+          "poll_interval_minutes",
+          "notifications"
+        ],
+        "title": "MailStatusOut"
       },
       "Meta": {
         "properties": {
@@ -3443,6 +4449,75 @@
           "amount"
         ],
         "title": "Money"
+      },
+      "NotificationChannelOut": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "title": "Channel"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel",
+          "available"
+        ],
+        "title": "NotificationChannelOut"
+      },
+      "PollOut": {
+        "properties": {
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched"
+          },
+          "stored": {
+            "type": "integer",
+            "title": "Stored"
+          },
+          "ignored": {
+            "type": "integer",
+            "title": "Ignored"
+          },
+          "needs_action": {
+            "type": "integer",
+            "title": "Needs Action"
+          },
+          "linked": {
+            "type": "integer",
+            "title": "Linked"
+          },
+          "status_changes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Status Changes"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fetched",
+          "stored",
+          "ignored",
+          "needs_action",
+          "linked",
+          "status_changes",
+          "error"
+        ],
+        "title": "PollOut"
       },
       "PortalEnableIn": {
         "properties": {
@@ -3944,6 +5019,34 @@
           "custom"
         ],
         "title": "RecencyPreset"
+      },
+      "ResumeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "file_name",
+          "is_default"
+        ],
+        "title": "ResumeOut"
       },
       "RoleTrialOut": {
         "properties": {

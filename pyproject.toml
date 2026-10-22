@@ -34,6 +34,7 @@ dependencies = [
     "pypdf>=5.1",
     "python-docx>=1.1",
     "beautifulsoup4>=4.13",
+    "apscheduler>=3.11,<4",
 ]
 
 [project.optional-dependencies]

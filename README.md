@@ -141,13 +141,56 @@ On **Approvals**, press **Review found jobs**:
    source and confidence. Tick "save" to reuse the answer next time.
 4. **H5**: you see exactly what will be submitted. Submit, edit (you'll see it again), or skip.
 5. The application is sent only with an approval of that exact content, once, with a screenshot
-   and confirmation text kept as proof. A failure before submit is retried once, then marked for manual action; a submit
-   without a confirmation is never retried, only flagged for you to check.
+   and confirmation text kept as proof. A failure before submit is retried once, then marked
+   for manual action; a submit without a confirmation is never retried, only flagged for you to
+   check (a later confirmation email settles it).
 
 Decisions wait for you across restarts. `presubmit_preview: false` skips H5, in which case the H3
 approval authorises submission. Daily cap per portal: 25 (configurable).
 
-## CLI (Phase 1)
+## Email and replies (Phase 4)
+
+On **Inbox**, connect **Gmail** or **Outlook / Microsoft 365** (OAuth in your browser), or a
+**local test mailbox** (a folder of `.eml` files, no account needed). Every 15 minutes, or on
+**Check now**, the Email Monitor:
+
+1. Reads new inbox mail and keeps only job mail. Newsletters are dropped and never stored. Login
+   codes are never stored or shown to a model.
+2. Classifies it (interview, recruiter, assessment, rejection, offer, documents, confirmation,
+   other) with the `fast` model. Mail that tries to instruct the model, or arrives while no model
+   is reachable, is classified by rules instead.
+3. Links it to the application it is about (same thread, or the company plus the job title; an
+   ambiguous match is left unlinked, never guessed) and moves that application forward:
+   interview, shortlisted, offer or rejected. It never moves an application backwards.
+4. For mail that needs you, it sends a notification (desktop, Telegram or a webhook) and adds an
+   **H6** decision: draft a reply (with your instruction, e.g. "accept, propose Thursday 3–5 PM
+   IST"), ignore, or mark done.
+
+The Reply Drafting agent writes the body from the thread, your profile and your instruction. If
+you allowed calendar checks, it offers only slots your calendar shows as free. Recipients,
+subject, signature and attachments are set by JobPilot, not the model, so text inside an email
+can't redirect a reply. **H7** shows the full draft (To, Cc, Subject, Body, attachments):
+
+- **Approve & send** sends exactly that version, once.
+- **Edit** makes a new version, which you see again before anything is sent.
+- **Regenerate** writes it again, with a new instruction if you give one.
+- **Discard** drops the draft.
+
+A send that may or may not have gone through is flagged for you to check, never resent.
+
+Setup: put `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (a Google "Desktop app" OAuth client with
+the Gmail API enabled) or `MS_CLIENT_ID` (an Entra app with a "Mobile and desktop" redirect of
+`http://127.0.0.1:8765/api/v1/mail/oauth/callback`) in `.env`. The scopes requested are:
+
+- Gmail: `gmail.readonly` + `gmail.send`
+- Outlook: `Mail.Read` + `Mail.Send`
+- With calendar checks on, also free/busy: `calendar.freebusy` (Gmail) or `Calendars.Read` (Outlook).
+
+Drafts stay in JobPilot until you approve them, so no draft scope is requested. Portal sign-in
+codes are read from this mailbox too: only from the portal's own domain, only from the last
+10 minutes.
+
+## CLI
 
 | Command | Purpose |
 |---------|---------|
@@ -157,12 +200,14 @@ approval authorises submission. Daily cap per portal: 25 (configurable).
 | `jobpilot profile show [--version N]` / `history` / `missing` | Inspect versions and gaps |
 | `jobpilot profile set FIELD VALUE` | Edit one field (`expected_ctc "30 LPA"`, `preferred_locations "Pune, Delhi"`) |
 | `jobpilot answers add Q A` / `answers list` | Manage the Answer Bank |
+| `jobpilot mail status` / `connect-local` / `poll` / `disconnect` | Mailbox (Gmail/Outlook connect from the Inbox page) |
 | `jobpilot stop` / `resume` | Global kill switch |
 | `jobpilot api serve` / `api export-spec` | Run the API / write the OpenAPI spec |
 
 ## Configuration
 
-- `.env`: secrets (`ANTHROPIC_API_KEY`, `JOBPILOT_MASTER_KEY`, `JOBPILOT_API_TOKEN`, `DATABASE_URL`, `LANGFUSE_*`).
+- `.env`: secrets (`ANTHROPIC_API_KEY`, `JOBPILOT_MASTER_KEY`, `JOBPILOT_API_TOKEN`, `DATABASE_URL`, `LANGFUSE_*`,
+  `GOOGLE_CLIENT_*`, `MS_CLIENT_*`, `TELEGRAM_BOT_TOKEN`, `JOBPILOT_NOTIFY_WEBHOOK_URL`).
 - `config.yaml`: behaviour (model routing, privacy mode, RAG, tracing sample rate, eval gates, daily cap per
   portal (default 25), polling interval (default 15 min), answer-confidence threshold, pre-submit preview,
   enabled portals, notifier channels). It is validated at startup; an unknown provider or a `local_only`
@@ -179,11 +224,13 @@ src/jobpilot/
 ├── harness/        agent harness: tools, budgets, approvals, guardrails, circuit breaker, runner
 ├── llm/            gateway + providers (Anthropic SDK, OpenAI-compatible for Ollama/vLLM)
 ├── observability/  Langfuse tracer with a no-op fallback
-├── agents/         one package per agent (profile done; others in later phases) + specs.py
+├── agents/         one package per agent (profile, search, matching, application, email, reply, orchestrator) + specs.py
+├── mail/           Gmail, Outlook (Graph), local mailbox, OAuth + PKCE, calendar free/busy
+├── notifications/  desktop, Telegram, webhook
 ├── rag/            Agentic RAG (Phase 2)
 ├── evals/          TruLens suites (Phase 2)
 ├── portals/        adapter interface + Naukri, LinkedIn, Shine, Generic (Phase 2)
-├── api/            FastAPI app, routers (system, profile, answers, llm), envelope, DTOs
+├── api/            FastAPI app, routers (system, profile, answers, llm, jobs, portals, workflows, mail), DTOs
 ├── prompts/        one versioned prompt file per agent task
 ├── migrations/     Alembic
 └── cli.py
@@ -194,7 +241,9 @@ web/                React + TypeScript UI (pages, typed API client, tests)
 ## Security and compliance
 
 - Credentials and browser sessions are encrypted at rest (Fernet). They are never logged, traced, or sent to an LLM.
-- OAuth uses least-privilege scopes (read, draft, send); tokens can be refreshed and revoked.
+- Mail OAuth uses PKCE and least-privilege scopes (read + send, free/busy only if you opt in);
+  tokens are encrypted, refreshed automatically and revoked on disconnect.
+- Every outgoing email is the exact text you approved at H7 (hash-bound), sent once per approval.
 - No CAPTCHA solving, no bot-detection evasion, no proxy rotation, no fake accounts. CAPTCHA and 2FA always go to you (H1).
 - Untrusted text (resumes, job pages, emails) is fenced before it reaches a model and never gets tool authority.
 - The automated browser can reach only public internet addresses: all of its traffic (redirects,
@@ -215,6 +264,6 @@ web/                React + TypeScript UI (pages, typed API client, tests)
 | 1.5 | Open-source default models, runtime provider/model picker, web UI | **Done** (198 backend tests, 95% coverage; 9 UI tests; browser E2E on local models) |
 | 2 | Agentic RAG + TruLens evals, portal connectors + auth, job search, dedup, matching, Jobs and Portals pages | **Done** (see below) |
 | 3 | LangGraph apply workflow (H3–H5 interrupts, restart-safe), Application agent, Approvals page | **Done** |
-| 4 | Email monitor + reply drafting (H6, H7) | Planned |
+| 4 | Email monitor (Gmail / Outlook / local), classification, linking, notifications, OTP; reply drafting with calendar slots; H6 + H7; Inbox page | **Done** |
 | 5 | Analytics & reporting | Planned |
 | 6 | Demo script, end-to-end tests, docs completion | Planned |

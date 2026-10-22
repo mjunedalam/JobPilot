@@ -1,4 +1,4 @@
-"""Apply workflows and their human-in-the-loop decisions (H3, H4, H5)."""
+"""Workflows and their human-in-the-loop decisions (H3–H5 for applying, H6–H7 for replies)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 
 from jobpilot.agents.application.selection import SelectionError, parse_selection
+from jobpilot.agents.orchestrator.reply_graph import EDITABLE
 from jobpilot.agents.orchestrator.runtime import PendingDecision, WorkflowError
 from jobpilot.api.deps import AUTH, Ctx, DbSession, RequestId
 from jobpilot.api.envelope import Envelope, ok
@@ -21,6 +22,7 @@ from jobpilot.api.workflow_schemas import (
     WorkflowOut,
 )
 from jobpilot.core.models import Application, Job
+from jobpilot.mail.base import split_addresses
 
 router = APIRouter(tags=["workflows"], dependencies=AUTH)
 
@@ -55,12 +57,58 @@ def _validate(decision: PendingDecision, answer: dict[str, Any]) -> None:
         missing = [k for k in keys if not str(values.get(k, "")).strip()]
         if missing:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, f"answer every field: {missing}")
+    if checkpoint == "H6" and action == "draft":
+        _check_text(answer.get("instruction", ""), "instruction", 1000, required=False)
+    if checkpoint == "H7":
+        _validate_h7(decision, action, answer)
     if checkpoint == "H5" and action == "edit":
         keys = set(decision.payload.get("keys", {}).values())
         if not isinstance(answer.get("values"), dict) or set(answer["values"]) - keys:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, "edit only fields shown in the preview"
             )
+
+
+def _check_text(value: Any, name: str, limit: int, *, required: bool) -> None:
+    if not isinstance(value, str) or len(value) > limit or (required and not value.strip()):
+        need = "non-empty " if required else ""
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{name} must be {need}text up to {limit}")
+
+
+def _check_addresses(value: Any, name: str, *, required: bool) -> None:
+    ok_list = isinstance(value, list) and all(isinstance(v, str) for v in value)
+    if not ok_list or len(value) > 10 or len(split_addresses(value)) != len(value):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{name} must be a list of addresses")
+    if required and not value:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{name} needs at least one address")
+
+
+def _validate_h7(decision: PendingDecision, action: Any, answer: dict[str, Any]) -> None:
+    if action == "regenerate":
+        _check_text(answer.get("instruction", ""), "instruction", 1000, required=False)
+    if action != "edit":
+        return
+    unknown = set(answer) - {"action", *EDITABLE}
+    if unknown:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"cannot edit {sorted(unknown)}")
+    if decision.payload.get("draft") is None and "body" not in answer:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "write the reply text")
+    if "to" in answer:
+        _check_addresses(answer["to"], "to", required=True)
+    if "cc" in answer:
+        _check_addresses(answer["cc"], "cc", required=False)
+    if "subject" in answer:
+        _check_text(answer["subject"], "subject", 300, required=True)
+    if "body" in answer:
+        _check_text(answer["body"], "body", 10_000, required=True)
+    if "attachments" in answer:
+        items = answer["attachments"]
+        if (
+            not isinstance(items, list)
+            or len(items) > 5
+            or not all(isinstance(i, int) and not isinstance(i, bool) for i in items)
+        ):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "attachments must be resume ids")
 
 
 @router.post("/workflows/apply", response_model=Envelope[StartedOut], status_code=202)

@@ -37,9 +37,17 @@ Every response uses one envelope:
 | GET | `/api/v1/jobs` · `/api/v1/jobs/{id}` | Ranked jobs awaiting review, with score, reason, red flags, sources |
 | POST | `/api/v1/workflows/apply` | Start an apply run; it pauses at H3 with the ranked found jobs |
 | GET | `/api/v1/workflows` | Runs with status (running / waiting / done / halted / failed) and summary |
-| GET | `/api/v1/decisions` | Pending decisions (H3 jobs, H4 questions, H5 preview) with their interrupt id |
+| GET | `/api/v1/decisions` | Pending decisions (H3 jobs, H4 questions, H5 preview, H6 email, H7 reply) with their interrupt id |
 | POST | `/api/v1/decisions/{thread_id}` | Answer one (`interrupt_id` + `answer`); validated first; 409 if no longer pending |
 | GET | `/api/v1/applications` · `/{id}/proof` | Applications with status, confirmation, proof screenshot |
+| GET | `/api/v1/mail` | Connected mailbox, OAuth apps configured, notification channels |
+| POST | `/api/v1/mail/connect` | `gmail` / `outlook`: returns the consent URL (PKCE); `local`: folder mailbox |
+| GET | `/api/v1/mail/oauth/callback` | OAuth redirect target (no token: protected by a single-use, 10-minute `state`) |
+| DELETE | `/api/v1/mail` | Disconnect and revoke |
+| POST | `/api/v1/mail/poll` | Check the mailbox now; returns what was kept, linked and raised |
+| GET | `/api/v1/emails` · `/api/v1/emails/{id}` | Job emails (filter by category / action status), with drafts |
+| GET | `/api/v1/drafts/{id}` | Draft versions, approval and send status |
+| GET | `/api/v1/resumes` | Resume versions (H7 attachments) |
 | GET | `/api/v1/stats?from=&to=` | Analytics (Phase 5) |
 
 The API binds to `127.0.0.1` by default and requires a bearer token (`JOBPILOT_API_TOKEN`).

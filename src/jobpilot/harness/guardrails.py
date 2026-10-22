@@ -11,7 +11,7 @@ from pydantic import BaseModel
 # Phrases typical of prompt injection inside scraped pages or emails. Detection only flags;
 # the real defence is fencing untrusted content and never giving it tool authority.
 _INJECTION_PATTERNS = re.compile(
-    r"(ignore (all|any|the) (previous|prior|above) instructions"
+    r"(ignore (?:(?:all|any|the) )?(?:previous|prior|above|earlier) instructions"
     r"|disregard (the|your) (system|previous)"
     r"|you are now|new instructions:|system prompt|reveal your|act as (an?|the) )",
     re.IGNORECASE,

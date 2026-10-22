@@ -1,4 +1,4 @@
-"""JobPilot command-line interface (Phase 1: setup, profile, answer bank, kill switch)."""
+"""JobPilot command-line interface: setup, profile, answer bank, mail, kill switch, API."""
 
 from __future__ import annotations
 
@@ -34,6 +34,8 @@ api_app = typer.Typer(help="REST API", no_args_is_help=True)
 app.add_typer(api_app, name="api")
 eval_app = typer.Typer(help="Evaluation suites", no_args_is_help=True)
 app.add_typer(eval_app, name="eval")
+mail_app = typer.Typer(help="Mailbox: connect, poll, status", no_args_is_help=True)
+app.add_typer(mail_app, name="mail")
 console = Console()
 
 
@@ -261,6 +263,62 @@ def eval_rag(
     console.print(f"Report: {target}")
     if not report.passed:
         raise typer.Exit(1)
+
+
+@mail_app.command("status")
+def mail_status() -> None:
+    """Show the connected mailbox."""
+    view = _ctx().mail.status()
+    if view is None:
+        console.print("No mailbox connected. Use the Inbox page, or `jobpilot mail connect-local`.")
+        return
+    console.print(f"[bold]{view.provider}[/] {view.address} · {view.status} {view.status_reason}")
+    console.print(
+        f"Calendar: {'on' if view.calendar_enabled else 'off'} · last poll: "
+        f"{view.last_polled_at or 'never'}"
+    )
+
+
+@mail_app.command("connect-local")
+def mail_connect_local(
+    address: str = typer.Option("me@jobpilot.local", help="Your address in the local mailbox"),
+    calendar: bool = typer.Option(True, help="Use data/mailbox/busy.json as the calendar"),
+) -> None:
+    """Use a folder mailbox (data/mailbox/inbox/*.eml) to try JobPilot without an account.
+    Gmail and Outlook connect from the Inbox page (they need the browser OAuth flow)."""
+    ctx = _ctx()
+    ctx.mail.connect_local(address, calendar=calendar)
+    console.print(
+        f"[green]Local mailbox connected.[/] Drop .eml files into "
+        f"{ctx.settings.data_dir / 'mailbox' / 'inbox'}"
+    )
+
+
+@mail_app.command("poll")
+def mail_poll() -> None:
+    """Check the mailbox now: classify job mail, link it, raise H6 for mail needing action."""
+    ctx = _ctx()
+    _guard(ctx)
+    try:
+        report = ctx.email_monitor.poll()
+    finally:
+        if "workflows" in ctx.__dict__:
+            ctx.workflows.shutdown(wait=True)  # let new H6 decisions reach their checkpoint
+    if report.error:
+        console.print(f"[red]{report.error}[/]")
+    console.print(
+        f"Fetched {report.fetched} · stored {report.stored} · ignored {report.ignored} "
+        f"· linked {report.linked} · need action {report.needs_action}"
+    )
+    for change in report.status_changes:
+        console.print(f"  {change}")
+
+
+@mail_app.command("disconnect")
+def mail_disconnect() -> None:
+    """Disconnect the mailbox and revoke its token (Gmail)."""
+    _ctx().mail.disconnect()
+    console.print("Mailbox disconnected.")
 
 
 @api_app.command("serve")

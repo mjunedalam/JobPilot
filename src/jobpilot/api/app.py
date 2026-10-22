@@ -16,9 +16,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from jobpilot.api.envelope import fail
-from jobpilot.api.routes import answers, jobs, llm, portals, profile, system, workflows
+from jobpilot.api.routes import answers, jobs, llm, mail, portals, profile, system, workflows
 from jobpilot.core.context import AppContext
 from jobpilot.core.killswitch import KillSwitchEngaged
+from jobpilot.core.scheduler import build_scheduler
 
 log = logging.getLogger(__name__)
 API_PREFIX = "/api/v1"
@@ -26,7 +27,10 @@ WEB_DIST = Path(__file__).resolve().parents[3] / "web" / "dist"
 
 
 def create_app(
-    ctx: AppContext, web_dist: Path | None = WEB_DIST, recover_workflows: bool = True
+    ctx: AppContext,
+    web_dist: Path | None = WEB_DIST,
+    recover_workflows: bool = True,
+    schedule: bool = True,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -34,21 +38,32 @@ def create_app(
             resumed = ctx.workflows.recover()  # continue runs interrupted by a restart
             if resumed:
                 log.info("resumed %d interrupted workflow(s)", len(resumed))
+        scheduler = None
+        if schedule:
+            scheduler = build_scheduler(
+                poll=lambda: ctx.email_monitor.poll(),
+                has_mailbox=lambda: ctx.mail.status() is not None,
+                kill_switch=ctx.kill_switch,
+                interval_minutes=ctx.config.email.poll_interval_minutes,
+            )
+            scheduler.start()
         yield
+        if scheduler is not None:
+            scheduler.shutdown(wait=False)
         if "workflows" in ctx.__dict__:
             ctx.workflows.shutdown()
 
     app = FastAPI(
         lifespan=lifespan,
         title="JobPilot API",
-        version="0.2.0",
+        version="0.4.0",
         summary="Multi-agent job application assistant with human-in-the-loop controls",
         openapi_url=f"{API_PREFIX}/openapi.json",
         docs_url=f"{API_PREFIX}/docs",
         redoc_url=None,
     )
     app.state.ctx = ctx
-    for module in (system, profile, answers, llm, jobs, portals, workflows):
+    for module in (system, profile, answers, llm, jobs, portals, workflows, mail):
         app.include_router(module.router, prefix=API_PREFIX)
     _register_error_handlers(app)
 

@@ -79,7 +79,7 @@ def login(ctx: Ctx, body: LoginIn, rid: RequestId, name: str = PortalName) -> En
             connector = PortalConnector(session, ctx.optional_vault)
             try:
                 if body.method == "password":
-                    connector.login_with_password(adapter, fetcher)
+                    connector.login_with_password(adapter, fetcher, otp=ctx.otp_source())
                 else:
                     connector.login_manually(adapter, fetcher)
             except (ManualActionRequired, PortalBlocked) as exc:

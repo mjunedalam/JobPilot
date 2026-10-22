@@ -60,6 +60,14 @@ application:
 email:
   poll_interval_minutes: 15
   otp_max_age_minutes: 10
+  first_poll_lookback_days: 7          # how far back the first poll after connecting looks
+  max_messages_per_poll: 50
+  calendar:                            # used only when calendar access is enabled
+    timezone: Asia/Kolkata
+    work_start: "10:00"
+    work_end: "18:00"
+    slot_minutes: 60
+    days_ahead: 5
 
 portals:
   # Off by default: automated use may breach a portal's terms (see README). Enable per portal on
@@ -71,7 +79,10 @@ portals:
   max_delay_seconds: 12
 
 notifications:
+  # desktop (macOS / Linux notify-send) | telegram (TELEGRAM_BOT_TOKEN + chat id) |
+  # webhook (JOBPILOT_NOTIFY_WEBHOOK_URL, e.g. a WhatsApp/Slack bridge). H6 always shows in the UI.
   channels: [desktop]
+  telegram_chat_id: ""
 
 api:
   host: 127.0.0.1

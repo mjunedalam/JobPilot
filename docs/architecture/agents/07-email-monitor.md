@@ -30,7 +30,27 @@ flowchart TD
 |--------|-------|
 | Model role (gateway) | fast |
 | RAG collections | writes `emails`; reads `jobs` for linking |
-| Allowed tools | mail.list_new, classify_email, link_application, notify, mail.fetch_otp |
+| Allowed tools | mail.list_new, notify (classification is a budgeted `structured` call) |
 | Tracing | one Langfuse span per run; tools, retrievals and generations nested |
 
 Runs inside the [agent harness](../04-agent-harness.md): kill switch, allowlist, budgets, retries and approval binding apply to every tool call.
+
+## Implementation (Phase 4)
+
+- `mail/`: one `Mailbox` interface for Gmail (REST, raw RFC 822), Outlook (Graph, MIME in and
+  out) and a local folder mailbox; OAuth 2.0 + PKCE with a loopback redirect; tokens encrypted
+  in `mail_accounts`, refreshed on expiry or a 401, `needs_reconnect` when a refresh is refused.
+- `agents/email/rules.py`: the prefilter (thread already linked, a job portal or ATS sender, a
+  company you applied to, or at least two job words), keyword categories used as the fallback,
+  and OTP extraction by pattern.
+- `agents/email/monitor.py`: classification with the `fast` role, fenced as untrusted. Mail
+  carrying injection markers, or arriving while the model is unreachable, is classified by rules.
+  Whether action is needed is decided by the category, not by the model. A specific category is
+  always kept (small models contradict themselves on `job_related`).
+- `agents/email/linker.py`: same thread, else company (+ title as tie-breaker) matching exactly
+  one application; status only moves forward. A confirmation email settles a submit that went
+  out without one ("needs manual check" → applied).
+- `agents/email/otp.py`: the Portal agent's `OtpSource`: the newest code from the portal's own
+  registrable domain within the last 10 minutes (a caller cannot widen it). Never stored or logged.
+- `core/scheduler.py`: APScheduler polls every `email.poll_interval_minutes`; skipped while the
+  kill switch is engaged; one poll at a time.

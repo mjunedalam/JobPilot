@@ -35,4 +35,21 @@ APPLICATION = AgentSpec(
     budget=Budget(max_steps=80, max_tokens=300_000, max_cost_usd=0.50, deadline_s=900),
 )
 
-SPECS: dict[str, AgentSpec] = {spec.name: spec for spec in (PROFILE, MATCHING, SEARCH, APPLICATION)}
+EMAIL = AgentSpec(
+    name="email_monitor",
+    model_role=ModelRole.FAST,
+    allowed_tools=frozenset({"mail.list_new", "notify"}),
+    # Per poll: one classification per job-looking message (max_messages_per_poll caps it).
+    budget=Budget(max_steps=120, max_tokens=300_000, max_cost_usd=0.50, deadline_s=900),
+)
+
+REPLY = AgentSpec(
+    name="reply_drafting",
+    model_role=ModelRole.WRITING,
+    allowed_tools=frozenset({"mail.get_thread", "calendar.free_busy", "mail.send"}),
+    budget=Budget(max_steps=10, max_tokens=60_000, max_cost_usd=0.20, deadline_s=600),
+)
+
+SPECS: dict[str, AgentSpec] = {
+    spec.name: spec for spec in (PROFILE, MATCHING, SEARCH, APPLICATION, EMAIL, REPLY)
+}

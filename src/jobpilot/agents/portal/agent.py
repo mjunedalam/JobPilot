@@ -39,7 +39,8 @@ class ManualActionRequired(RuntimeError):
 
 
 class OtpSource(Protocol):
-    """Implemented by the Email Monitor (Phase 4): newest code from `sender` within `max_age`."""
+    """Implemented by the Email Monitor (agents/email/otp.py): newest code from the portal's
+    domain within `max_age`."""
 
     def fetch_code(self, *, portal: str, sender_hint: str, max_age: timedelta) -> str | None: ...
 
