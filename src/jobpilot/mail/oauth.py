@@ -76,6 +76,22 @@ def microsoft(tenant: str = "common") -> OAuthProvider:
     )
 
 
+# Without these, replies can't be sent. Google's and Microsoft's consent pages let the user
+# untick individual permissions, so what was granted is checked, not assumed.
+SEND_SCOPES: dict[str, str] = {
+    "gmail": "https://www.googleapis.com/auth/gmail.send",
+    "outlook": "mail.send",
+}
+
+
+def can_send(provider: str, granted: str) -> bool:
+    need = SEND_SCOPES.get(provider)
+    if need is None:
+        return True
+    scopes = {s.lower().rsplit("/", 1)[-1] if provider == "outlook" else s for s in granted.split()}
+    return need in scopes
+
+
 @dataclass(frozen=True)
 class TokenSet:
     access_token: str

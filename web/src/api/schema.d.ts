@@ -757,6 +757,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/emails/{email_id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reply Again
+         * @description Start a reply for this email (H6 → draft → H7), e.g. after a send was refused or an
+         *     email was set aside. Refused while a reply for it is already open.
+         */
+        post: operations["reply_again_api_v1_emails__email_id__reply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/drafts/{draft_id}": {
         parameters: {
             query?: never;
@@ -1058,6 +1079,8 @@ export interface components {
             application: components["schemas"]["LinkedApplicationOut"] | null;
             /** Workflow Thread Id */
             workflow_thread_id: string;
+            /** Reply Open */
+            reply_open: boolean;
             /** Body */
             body: string;
             /** Recipients */
@@ -1099,6 +1122,8 @@ export interface components {
             application: components["schemas"]["LinkedApplicationOut"] | null;
             /** Workflow Thread Id */
             workflow_thread_id: string;
+            /** Reply Open */
+            reply_open: boolean;
         };
         /** Envelope[AnswerOut] */
         Envelope_AnswerOut_: {
@@ -3479,6 +3504,37 @@ export interface operations {
         };
     };
     apply_suggestion_api_v1_emails__email_id__apply_suggestion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                email_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_EmailOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reply_again_api_v1_emails__email_id__reply_post: {
         parameters: {
             query?: never;
             header?: never;

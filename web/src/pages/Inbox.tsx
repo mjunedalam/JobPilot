@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import {
   useApplySuggestion,
+  useReplyAgain,
   useConnectMail,
   useDisconnectMail,
   useEmails,
@@ -75,12 +76,32 @@ function Connect({ status }: { status: MailStatus }) {
   );
 }
 
+function ReadOnly({ provider, reason }: { provider: string; reason: string }) {
+  const connect = useConnectMail();
+  const url = connect.data?.authorization_url;
+  return (
+    <div className="mail-readonly" role="alert">
+      <p><strong>Replies can't be sent yet.</strong> {reason}</p>
+      <p className="muted">
+        On the {provider === "gmail" ? "Google" : "Microsoft"} page, make sure the box for sending
+        email is ticked. Reading your inbox keeps working meanwhile.
+      </p>
+      <Button variant="primary" busy={connect.isPending}
+              onClick={() => connect.mutate({ provider: provider as "gmail" | "outlook", calendar: false, address: "me@jobpilot.local" })}>
+        Reconnect with send permission
+      </Button>
+      {url && <p className="muted">If no tab opened, <a href={url} target="_blank" rel="noopener noreferrer">continue to the provider</a>.</p>}
+      <ErrorNote error={connect.error} />
+    </div>
+  );
+}
+
 function Account({ status }: { status: MailStatus }) {
   const account = status.account;
   const poll = usePollMail();
   const disconnect = useDisconnectMail();
   if (!account) return null;
-  const tone = account.status === "connected" ? "go" : "stop";
+  const tone = account.status === "connected" ? "go" : account.status === "read_only" ? "amber" : "stop";
   const report = poll.data;
 
   return (
@@ -92,7 +113,8 @@ function Account({ status }: { status: MailStatus }) {
         <span className="muted">· checked {account.last_polled_at ? relativeTime(account.last_polled_at) : "never"},
           every {status.poll_interval_minutes} min</span>
       </p>
-      {account.status_reason && <p className="tone-stop">{account.status_reason}</p>}
+      {account.status === "read_only" && <ReadOnly provider={account.provider} reason={account.status_reason} />}
+      {account.status !== "read_only" && account.status_reason && <p className="tone-stop">{account.status_reason}</p>}
       <div className="decision-actions">
         <Button variant="ghost" busy={disconnect.isPending}
                 onClick={() => window.confirm("Disconnect this mailbox? Its access token is revoked.") && disconnect.mutate()}>
@@ -135,6 +157,16 @@ function Suggestion({ email }: { email: EmailRow }) {
   );
 }
 
+function ReplyAgain({ id }: { id: number }) {
+  const again = useReplyAgain();
+  return (
+    <>
+      <Button busy={again.isPending} onClick={() => again.mutate(id)}>Reply again</Button>
+      <ErrorNote error={again.error} />
+    </>
+  );
+}
+
 function EmailItem({ email }: { email: EmailRow }) {
   return (
     <article className={`mail-row ${email.action_status === "needs_action" ? "mail-row-hot" : ""}`}>
@@ -158,9 +190,8 @@ function EmailItem({ email }: { email: EmailRow }) {
         <span className={email.action_status === "needs_action" ? "tone-amber" : "muted"}>
           {ACTION_LABEL[email.action_status] ?? email.action_status}
         </span>
-        {(email.action_status === "needs_action" || email.action_status === "drafting") && (
-          <Link className="btn btn-secondary" to="/approvals">Open decision</Link>
-        )}
+        {email.reply_open && <Link className="btn btn-secondary" to="/approvals">Open decision</Link>}
+        {!email.reply_open && email.action_status !== "replied" && <ReplyAgain id={email.id} />}
         {email.classified_by === "rules" && <span className="muted" title="The model was unavailable">by rules</span>}
       </div>
     </article>

@@ -118,7 +118,7 @@ def build_reply_graph(ops: ReplyOps, *, checkpointer: Any = None) -> Any:
         draft_id, version = state["draft_id"], state["version"]
         assert draft_id is not None and version is not None
         result = ops.send(draft_id, version, state["approval_id"])
-        if result["outcome"] == "changed":
+        if result["outcome"] in ("changed", "refused"):  # nothing was sent: approve again
             return {"error": result["detail"], "next": "review"}
         return {"outcome": result["outcome"], "error": result.get("detail", ""), "next": "end"}
 

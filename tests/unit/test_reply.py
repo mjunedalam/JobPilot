@@ -254,3 +254,60 @@ def test_bad_edit_is_asked_again_and_ignore_ends(env, sessions) -> None:  # noqa
     assert out["outcome"] == "ignored"
     with session_scope(sessions) as s:
         assert s.get(Email, env["email_id"]).action_status == "ignored"
+
+
+def _to_h7(env):  # noqa: ANN001, ANN202
+    svc = env["service"](FakeLLM(ReplyBody(body="Thanks, Monday works.")))
+    g = graph(svc, env["db"])
+    g.invoke({"email_id": env["email_id"]}, CFG)
+    g.invoke(Command(resume={"action": "draft", "instruction": "accept"}), CFG)
+    return svc, g
+
+
+def test_refused_send_goes_back_to_h7_and_can_be_approved_again(env, sessions, monkeypatch) -> None:  # noqa: ANN001
+    from jobpilot.mail.base import MailAuthError
+    from jobpilot.mail.local import LocalMailbox
+
+    svc, g = _to_h7(env)
+    real_send = LocalMailbox.send
+
+    def refuse(self, mail):  # noqa: ANN001, ANN202
+        raise MailAuthError("Gmail refused access (403); reconnect the account")
+
+    monkeypatch.setattr(LocalMailbox, "send", refuse)
+    g.invoke(Command(resume={"action": "approve"}), CFG)
+    back = pending(g)  # a definite refusal: nothing was sent, so you can approve again
+    assert back["checkpoint"] == "H7" and "refused to send" in back["error"]
+    assert "approve" in back["allowed"] and sent_messages(env["sent"]) == []
+    with session_scope(sessions) as s:
+        assert s.query(Draft).one().status == "awaiting_approval"
+
+    monkeypatch.setattr(LocalMailbox, "send", real_send)  # e.g. after reconnecting
+    g.invoke(Command(resume={"action": "approve"}), CFG)
+    assert len(sent_messages(env["sent"])) == 1 and g.get_state(CFG).values["outcome"] == "sent"
+
+
+def test_timeout_stays_unknown_and_is_not_resent(env, monkeypatch) -> None:  # noqa: ANN001
+    from jobpilot.mail.local import LocalMailbox
+
+    svc, g = _to_h7(env)
+
+    def drop(self, mail):  # noqa: ANN001, ANN202
+        raise TimeoutError("connection dropped after the request was sent")
+
+    monkeypatch.setattr(LocalMailbox, "send", drop)
+    g.invoke(Command(resume={"action": "approve"}), CFG)
+    assert g.get_state(CFG).values["outcome"] == "send_unknown"  # may have gone out
+
+
+def test_read_only_mailbox_never_attempts_a_send(env, sessions) -> None:  # noqa: ANN001
+    from jobpilot.core.models import MailAccount
+
+    svc, g = _to_h7(env)
+    with session_scope(sessions) as s:
+        acc = s.query(MailAccount).one()
+        acc.status, acc.status_reason = "read_only", "Sending was not allowed on the consent page"
+    g.invoke(Command(resume={"action": "approve"}), CFG)
+    back = pending(g)
+    assert back["checkpoint"] == "H7" and "Sending was not allowed" in back["error"]
+    assert sent_messages(env["sent"]) == []

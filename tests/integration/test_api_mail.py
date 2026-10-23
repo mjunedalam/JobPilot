@@ -184,3 +184,25 @@ def test_apply_suggestion_is_a_logged_user_decision(setup) -> None:  # noqa: ANN
         [decision] = [a for a in s.query(AuditLog) if a.action == "decision:apply_status"]
         assert decision.checkpoint == "H6"
         assert decision.payload["approved_content"]["status"] == "rejected"
+
+
+def test_reply_again_starts_a_new_reply_once(setup, tmp_path) -> None:  # noqa: ANN001
+    client, ctx, llm = setup
+    client.post("/api/v1/mail/connect", json={"provider": "local"}, headers=AUTH)
+    shutil.copy(FIX / "interview.eml", tmp_path / "mailbox" / "inbox" / "i.eml")
+    client.post("/api/v1/mail/poll", headers=AUTH)
+    [email] = client.get("/api/v1/emails", headers=AUTH).json()["data"]
+    wait_decision(client, "H6")
+    assert client.get("/api/v1/emails", headers=AUTH).json()["data"][0]["reply_open"] is True
+    busy = client.post(f"/api/v1/emails/{email['id']}/reply", headers=AUTH)
+    assert busy.status_code == 409
+    h6 = wait_decision(client, "H6")
+    answer(client, h6, {"action": "ignore"})
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if not client.get("/api/v1/emails", headers=AUTH).json()["data"][0]["reply_open"]:
+            break
+        time.sleep(0.05)
+    again = client.post(f"/api/v1/emails/{email['id']}/reply", headers=AUTH)
+    assert again.status_code == 200 and again.json()["data"]["action_status"] == "needs_action"
+    assert wait_decision(client, "H6")["payload"]["email"]["email_id"] == email["id"]

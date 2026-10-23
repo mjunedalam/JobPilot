@@ -30,7 +30,7 @@ from jobpilot.api.mail_schemas import (
 )
 from jobpilot.core.audit import log_decision
 from jobpilot.core.context import AppContext
-from jobpilot.core.models import Application, Draft, Email, Job, ResumeVersion
+from jobpilot.core.models import Application, Draft, Email, Job, ResumeVersion, WorkflowRun
 from jobpilot.core.status import Checkpoint, JobStatus
 from jobpilot.mail.base import MailError
 
@@ -163,7 +163,15 @@ def _email_out(session: Session, e: Email) -> EmailOut:
         suggested_status=e.suggested_status,
         application=application,
         workflow_thread_id=e.workflow_thread_id,
+        reply_open=_reply_open(session, e),
     )
+
+
+def _reply_open(session: Session, e: Email) -> bool:
+    if not e.workflow_thread_id:
+        return False
+    run = session.get(WorkflowRun, e.workflow_thread_id)
+    return run is not None and run.status in ("waiting", "running")
 
 
 @router.get("/emails", response_model=Envelope[list[EmailOut]], dependencies=AUTH)
@@ -244,6 +252,22 @@ def apply_suggestion(
         entity_id=e.id,
     )
     e.suggested_status = ""
+    session.flush()
+    return ok(_email_out(session, e), rid)
+
+
+@router.post("/emails/{email_id}/reply", response_model=Envelope[EmailOut], dependencies=AUTH)
+def reply_again(ctx: Ctx, email_id: int, session: DbSession, rid: RequestId) -> Envelope[EmailOut]:
+    """Start a reply for this email (H6 → draft → H7), e.g. after a send was refused or an
+    email was set aside. Refused while a reply for it is already open."""
+    ctx.kill_switch.check()
+    e = session.get(Email, email_id)
+    if e is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "email not found")
+    if _reply_open(session, e):
+        raise HTTPException(status.HTTP_409_CONFLICT, "a reply to this email is already open")
+    thread_id, _ = ctx.workflows.start("reply", {"email_id": e.id})
+    e.workflow_thread_id, e.action_status = thread_id, "needs_action"
     session.flush()
     return ok(_email_out(session, e), rid)
 

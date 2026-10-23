@@ -1759,3 +1759,13 @@ a.check-link:hover .check-go {
 .ip-outcome-fail > svg {
   color: var(--stop);
 }
+
+.mail-readonly {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-md);
+  background: var(--amber-soft);
+}

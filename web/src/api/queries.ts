@@ -460,3 +460,13 @@ export function useApplySuggestion() {
     onSettled: () => invalidate(mailKeys.allEmails, flowKeys.applications),
   });
 }
+
+/** Start a new reply (H6 → H7) for an email, e.g. after a refused send. */
+export function useReplyAgain() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async (emailId: number) =>
+      unwrap(await api.POST("/api/v1/emails/{email_id}/reply", { params: { path: { email_id: emailId } } })),
+    onSettled: () => invalidate(mailKeys.allEmails, flowKeys.decisions, flowKeys.workflows),
+  });
+}

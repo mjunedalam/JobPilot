@@ -74,6 +74,7 @@ class EmailOut(BaseModel):
     suggested_status: str  # needs you: the sender could not be verified
     application: LinkedApplicationOut | None
     workflow_thread_id: str
+    reply_open: bool  # a reply decision (H6 / H7) is waiting or in progress
 
 
 class DraftOut(BaseModel):

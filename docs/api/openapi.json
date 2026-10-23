@@ -1909,6 +1909,54 @@
         }
       }
     },
+    "/api/v1/emails/{email_id}/reply": {
+      "post": {
+        "tags": [
+          "mail"
+        ],
+        "summary": "Reply Again",
+        "description": "Start a reply for this email (H6 \u2192 draft \u2192 H7), e.g. after a send was refused or an\nemail was set aside. Refused while a reply for it is already open.",
+        "operationId": "reply_again_api_v1_emails__email_id__reply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "email_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Email Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_EmailOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/drafts/{draft_id}": {
       "get": {
         "tags": [
@@ -2645,6 +2693,10 @@
             "type": "string",
             "title": "Workflow Thread Id"
           },
+          "reply_open": {
+            "type": "boolean",
+            "title": "Reply Open"
+          },
           "body": {
             "type": "string",
             "title": "Body"
@@ -2678,6 +2730,7 @@
           "suggested_status",
           "application",
           "workflow_thread_id",
+          "reply_open",
           "body",
           "recipients",
           "drafts"
@@ -2748,6 +2801,10 @@
           "workflow_thread_id": {
             "type": "string",
             "title": "Workflow Thread Id"
+          },
+          "reply_open": {
+            "type": "boolean",
+            "title": "Reply Open"
           }
         },
         "type": "object",
@@ -2765,7 +2822,8 @@
           "link_reason",
           "suggested_status",
           "application",
-          "workflow_thread_id"
+          "workflow_thread_id",
+          "reply_open"
         ],
         "title": "EmailOut"
       },

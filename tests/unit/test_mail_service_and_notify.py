@@ -201,3 +201,38 @@ def test_graph_free_busy_ignores_free_items() -> None:
     assert busy == [
         (datetime(2026, 10, 26, 4, 30, tzinfo=UTC), datetime(2026, 10, 26, 5, 30, tzinfo=UTC))
     ]
+
+
+def test_can_send_checks_granted_scopes() -> None:
+    from jobpilot.mail.oauth import can_send
+
+    read_only = "openid https://www.googleapis.com/auth/gmail.readonly"
+    assert not can_send("gmail", read_only)
+    assert can_send("gmail", read_only + " https://www.googleapis.com/auth/gmail.send")
+    assert can_send("outlook", "https://graph.microsoft.com/Mail.Send User.Read")
+    assert not can_send("outlook", "Mail.Read User.Read")
+    assert can_send("local", "")
+
+
+def test_connect_without_send_permission_is_read_only(sessions, tmp_path) -> None:  # noqa: ANN001
+    def google(req: httpx.Request) -> httpx.Response:
+        if req.url.host == "oauth2.googleapis.com":
+            return httpx.Response(200, json={
+                "access_token": "at", "refresh_token": "rt", "expires_in": 3600,
+                "scope": "openid https://www.googleapis.com/auth/gmail.readonly",
+            })  # fmt: skip
+        return httpx.Response(200, json={"emailAddress": "me@gmail.com"})
+
+    svc = MailService(
+        sessions=sessions, vault=Vault(Vault.generate_key()),
+        settings=Settings(google_client_id="cid", google_client_secret="s"),
+        config=EmailConfig(), mailbox_dir=tmp_path,
+        http=httpx.Client(transport=httpx.MockTransport(google)),
+        clock=lambda: datetime(2026, 10, 22, tzinfo=UTC),
+    )  # fmt: skip
+    url = svc.begin_connect("gmail", "http://127.0.0.1:8765/cb", False)
+    view = svc.complete_connect(httpx.URL(url).params["state"], "code")
+    assert view.status == "read_only" and "Send email on your behalf" in view.status_reason
+    svc.record_poll(datetime(2026, 10, 22, tzinfo=UTC))  # a good poll must not hide it
+    assert svc.status().status == "read_only"
+    assert svc.can_send()[0] is False

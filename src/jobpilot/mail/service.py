@@ -31,11 +31,20 @@ from jobpilot.mail.calendar import (
 from jobpilot.mail.gmail import GmailMailbox
 from jobpilot.mail.http import AuthorizedHttp
 from jobpilot.mail.local import LocalMailbox
-from jobpilot.mail.oauth import GOOGLE, FlowStore, OAuthClient, OAuthProvider, TokenSet, microsoft
+from jobpilot.mail.oauth import (
+    GOOGLE,
+    FlowStore,
+    OAuthClient,
+    OAuthProvider,
+    TokenSet,
+    can_send,
+    microsoft,
+)
 from jobpilot.mail.outlook import OutlookMailbox
 
 ACTOR = "mail_service"
 PROVIDERS = ("gmail", "outlook", "local")
+READ_ONLY = "read_only"  # connected, but sending was not granted
 
 
 @dataclass(frozen=True)
@@ -114,11 +123,21 @@ class MailService:
         mailbox = self.mailbox()
         assert mailbox is not None
         address = mailbox.address()
+        sending = can_send(flow.provider, tokens.scope)
         with session_scope(self._sessions) as s:
             acc = self._current(s)
             assert acc is not None
             acc.address = address
-            log_action(s, ACTOR, "mail_connected", entity_type="mail", entity_id=flow.provider)
+            if not sending:
+                acc.status = READ_ONLY
+                acc.status_reason = (
+                    "Sending was not allowed on the consent page, so replies can't be sent. "
+                    "Reconnect and tick “Send email on your behalf”."
+                )
+            log_action(
+                s, ACTOR, "mail_connected", entity_type="mail", entity_id=flow.provider,
+                payload={"can_send": sending},
+            )  # fmt: skip
         return self.status()  # type: ignore[return-value]
 
     def connect_local(
@@ -207,6 +226,8 @@ class MailService:
                 acc.cursor = cursor
             if auth_failed:
                 acc.status, acc.status_reason = "needs_reconnect", error[:500]
+            elif acc.status == READ_ONLY:
+                pass  # reading works; only a reconnect with send permission clears this
             elif not error:
                 acc.status, acc.status_reason = "connected", ""
             else:
@@ -261,6 +282,16 @@ class MailService:
         if view.provider == "gmail":
             return GoogleFreeBusy(self._authorized("gmail"))
         return GraphFreeBusy(self._authorized("outlook"), view.address)
+
+    def can_send(self) -> tuple[bool, str]:
+        view = self.status()
+        if view is None:
+            return False, "no mailbox is connected"
+        if view.status == READ_ONLY:
+            return False, view.status_reason
+        if view.status == "needs_reconnect":
+            return False, f"the mailbox needs reconnecting: {view.status_reason}"
+        return True, ""
 
     def working_hours(self) -> WorkingHours:
         c = self.config.calendar

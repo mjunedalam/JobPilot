@@ -38,6 +38,7 @@ from jobpilot.harness.tools import SideEffect, Tool, ToolRegistry
 from jobpilot.llm.base import LLMError
 from jobpilot.mail.base import (
     Attachment,
+    MailAuthError,
     MailError,
     MailMessage,
     OutgoingMail,
@@ -49,6 +50,7 @@ from jobpilot.mail.service import MailService
 
 log = logging.getLogger(__name__)
 ACTOR = "reply_service"
+_HTTP_4XX = re.compile(r"HTTP 4\d\d")
 _ATTACH_HINT = ("resume", " cv", "curriculum", "document")
 
 
@@ -524,26 +526,34 @@ class ReplyService:
                     return str(a["name"])
         return ""
 
+    def _back_to_review(self, draft_id: int, outcome: str, detail: str) -> dict[str, str]:
+        """Nothing was sent: the draft waits for a new approval (a new idempotency key)."""
+        with session_scope(self._sessions) as s:
+            draft = s.get(Draft, draft_id)
+            assert draft is not None
+            draft.status, draft.approved_version, draft.approved_sha256 = (
+                "awaiting_approval", None, "",
+            )  # fmt: skip
+            draft.error = detail
+            log_action(
+                s, ACTOR, f"reply:{outcome}", entity_type="draft", entity_id=draft_id,
+                payload={"detail": detail},
+            )  # fmt: skip
+        return {"outcome": outcome, "detail": detail}
+
     def send(self, draft_id: int, n: int, approval_id: int) -> dict[str, str]:
         view = self.version_view(draft_id, n)
         if view is None:
             raise ReplyError("draft version not found")
         payload = approval_content(view, draft_id)
         if changed := self._changed_attachments(payload["attachments"]):
-            with session_scope(self._sessions) as s:
-                draft = s.get(Draft, draft_id)
-                assert draft is not None
-                draft.status, draft.approved_version, draft.approved_sha256 = (
-                    "awaiting_approval",
-                    None,
-                    "",
-                )
-            return {
-                "outcome": "changed",
-                "detail": f"{changed} changed after approval; approve again",
-            }
+            return self._back_to_review(
+                draft_id, "changed", f"{changed} changed after approval; approve again"
+            )
+        allowed, why = self._mail.can_send()
+        if not allowed:
+            return self._back_to_review(draft_id, "refused", f"Not sent: {why}")
         h = self._harness_for(ToolRegistry(self._tools()))
-        outcome, detail, sent_id = "sent", "", ""
         try:
             with h.run("send_reply", draft_id=draft_id, version=n):
                 out = h.call_tool(
@@ -553,12 +563,25 @@ class ReplyService:
                     idempotency_key=f"mail.send:{draft_id}:{n}:{approval_id}",
                 )
                 assert isinstance(out, _SendOut)
-                sent_id = out.sent_message_id
         except OutcomeUnknown as exc:
-            outcome, detail = "send_unknown", f"{exc}; check your Sent folder"
+            return self._record_send(
+                draft_id, n, approval_id, "send_unknown", f"{exc}; check your Sent folder"
+            )
         except (HarnessError, ReplyError, MailError) as exc:
-            # The provider may or may not have accepted it; never resend automatically.
-            outcome, detail = "send_unknown", f"send did not finish ({exc}); check your Sent folder"
+            if reason := _definitely_not_sent(exc):
+                return self._back_to_review(
+                    draft_id, "refused", f"Not sent: {reason}. Fix it, then approve again."
+                )
+            # A timeout or a dropped connection: it may have gone out; never resend blindly.
+            return self._record_send(
+                draft_id, n, approval_id, "send_unknown",
+                f"send did not finish ({exc}); check your Sent folder",
+            )  # fmt: skip
+        return self._record_send(draft_id, n, approval_id, "sent", "", out.sent_message_id)
+
+    def _record_send(
+        self, draft_id: int, n: int, approval_id: int, outcome: str, detail: str, sent_id: str = ""
+    ) -> dict[str, str]:
         with session_scope(self._sessions) as s:
             draft = s.get(Draft, draft_id)
             assert draft is not None
@@ -578,6 +601,24 @@ class ReplyService:
                 payload={"version": n, "approval_id": approval_id, "detail": detail},
             )
         return {"outcome": outcome, "detail": detail}
+
+
+def _definitely_not_sent(exc: BaseException) -> str:
+    """The provider rejected the request (401/403/4xx) or it never left JobPilot: nothing was
+    sent, so a new approval may safely try again. "" when the outcome is unknown."""
+    seen: BaseException | None = exc
+    while seen is not None:
+        if isinstance(seen, MailAuthError):
+            return (
+                "the mailbox refused to send. Reconnect it on the Inbox page and allow "
+                "sending email"
+            )
+        if isinstance(seen, MailError) and _HTTP_4XX.search(str(seen)):
+            return f"the mail provider rejected the message ({seen})"
+        if isinstance(seen, ReplyError):
+            return str(seen)
+        seen = seen.__cause__
+    return ""
 
 
 def _mime_type(name: str) -> str:
