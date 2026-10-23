@@ -193,6 +193,29 @@ Drafts stay in JobPilot until you approve them, so no draft scope is requested. 
 codes are read from this mailbox too: only from the portal's own domain, only from the last
 10 minutes.
 
+## The cockpit: live UI, Autopilot and phone approvals
+
+- **Mission control** (home) shows today's pipeline filling in live, what is waiting for you,
+  the activity feed and the Autopilot schedule. Everything updates from one live event stream.
+- **Decisions** shows one decision at a time, with what will happen if you approve and the job's
+  whole story. Keys: J/K move, A approve, R reject, E edit, U undo. Approving jobs, submitting an
+  application and sending a reply wait 5 seconds so you can undo.
+- **Live ops** lets you watch the agents work: an X-ray of the agents inside the harness, or
+  "The Agency", where they are people in an office carrying files to your desk. It follows real
+  events, or plays a demo day.
+- **⌘K** (Ctrl+K) opens the command bar: jump anywhere, check mail, run Autopilot, stop everything.
+
+**Autopilot** (Mission control → Autopilot) runs the search at a time and on days you pick, ranks
+the results, opens a job review and, if you like, checks mail. It never approves anything: every
+decision still waits for you.
+
+**Approve from your phone with Telegram.** Create a bot with @BotFather and put its token in
+`.env` as `TELEGRAM_BOT_TOKEN`, add `telegram` to `notifications.channels` in `config.yaml`, then
+restart. On Mission control → Notifications, press **Link my Telegram**, open the bot and press
+Start. Each decision then arrives with Approve / Reject buttons (anything that needs editing or
+typing opens the app). Buttons work once, only from your linked chat, and go through the same
+checks as the app. `notifications.quiet_hours: "22:00-08:00"` delivers silently overnight.
+
 ## CLI
 
 | Command | Purpose |
@@ -268,5 +291,6 @@ web/                React + TypeScript UI (pages, typed API client, tests)
 | 2 | Agentic RAG + TruLens evals, portal connectors + auth, job search, dedup, matching, Jobs and Portals pages | **Done** (see below) |
 | 3 | LangGraph apply workflow (H3–H5 interrupts, restart-safe), Application agent, Approvals page | **Done** |
 | 4 | Email monitor (Gmail / Outlook / local), classification, linking, notifications, OTP; reply drafting with calendar slots; H6 + H7; Inbox page | **Done** |
+| 4.5 | Cockpit UI: live events, Mission control, Decision Center (undo, hotkeys, journeys), Live ops (X-ray, The Agency), ⌘K, Autopilot, Telegram approvals | **Done** |
 | 5 | Analytics & reporting | Planned |
 | 6 | Demo script, end-to-end tests, docs completion | Planned |

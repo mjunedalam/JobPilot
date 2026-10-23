@@ -2371,6 +2371,53 @@
           }
         ]
       }
+    },
+    "/api/v1/jobs/{job_id}/journey": {
+      "get": {
+        "tags": [
+          "workflows"
+        ],
+        "summary": "Journey",
+        "operationId": "journey_api_v1_jobs__job_id__journey_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JourneyOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3599,6 +3646,40 @@
         },
         "type": "object",
         "title": "Envelope[JobOut]"
+      },
+      "Envelope_JourneyOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JourneyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[JourneyOut]"
       },
       "Envelope_KillSwitchOut_": {
         "properties": {
@@ -5165,6 +5246,71 @@
           "rejected"
         ],
         "title": "JobStatus"
+      },
+      "JourneyOut": {
+        "properties": {
+          "job_id": {
+            "type": "integer",
+            "title": "Job Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/JourneyStep"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "title",
+          "company",
+          "status",
+          "steps"
+        ],
+        "title": "JourneyOut"
+      },
+      "JourneyStep": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          },
+          "tone": {
+            "type": "string",
+            "title": "Tone",
+            "default": "neutral"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "title"
+        ],
+        "title": "JourneyStep"
       },
       "KillSwitchOut": {
         "properties": {

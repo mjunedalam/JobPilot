@@ -49,6 +49,16 @@ Every response uses one envelope:
 | POST | `/api/v1/emails/{id}/apply-suggestion` | Apply the status an unverified email suggests (audited H6 decision) |
 | GET | `/api/v1/drafts/{id}` | Draft versions, approval and send status |
 | GET | `/api/v1/resumes` | Resume versions (H7 attachments) |
+| POST | `/api/v1/emails/{id}/reply` | Start a new reply (H6 → H7) for an email, e.g. after a refused send |
+| GET | `/api/v1/jobs/{id}/journey` | One job's story: found, ranked, decisions, application, emails, replies |
+| GET | `/api/v1/events?since=` | Server-sent events (bearer token): `audit`, `workflow`, `agent`, `tool`, `llm`, `import`; `since` replays from a 500-event buffer |
+| GET | `/api/v1/activity` | Recent activity in plain language (the Mission control feed) |
+| GET/PUT | `/api/v1/autopilot` | Daily schedule (time, days, recency, sources, also check mail) and the next run |
+| POST | `/api/v1/autopilot/run` | Run it now (202). It searches, ranks and opens an H3 review; it never approves |
+| GET | `/api/v1/notifications` | Channels, Telegram link state, quiet hours |
+| POST | `/api/v1/notifications/telegram/link/start` · `/link` | Get a one-use link code, then confirm you pressed Start in the bot |
+| POST | `/api/v1/notifications/telegram/test` | Send a test message |
+| DELETE | `/api/v1/notifications/telegram` | Unlink Telegram |
 | GET | `/api/v1/stats?from=&to=` | Analytics (Phase 5) |
 
 The API binds to `127.0.0.1` by default and requires a bearer token (`JOBPILOT_API_TOKEN`).

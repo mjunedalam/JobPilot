@@ -82,7 +82,9 @@ notifications:
   # desktop (macOS / Linux notify-send) | telegram (TELEGRAM_BOT_TOKEN + chat id) |
   # webhook (JOBPILOT_NOTIFY_WEBHOOK_URL, e.g. a WhatsApp/Slack bridge). H6 always shows in the UI.
   channels: [desktop]
-  telegram_chat_id: ""
+  telegram_chat_id: ""        # or link from Mission control → Notifications
+  telegram_approvals: true    # Approve / Reject buttons in Telegram
+  quiet_hours: ""             # e.g. "22:00-08:00": messages arrive silently
 
 api:
   host: 127.0.0.1

@@ -17,13 +17,14 @@ import {
   BarChart3,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useDecisions } from "../api/queries";
 import { updateBadge } from "../lib/notify";
 import { useLiveStatus } from "./live/LiveProvider";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useTheme } from "../lib/theme";
 import { Annunciator } from "./Annunciator";
+import { CommandBar, useCommandHotkey } from "./CommandBar";
 
 interface NavItem {
   to: string;
@@ -77,6 +78,10 @@ export function Shell() {
   const [theme, cycleTheme] = useTheme();
   const location = useLocation();
   const ThemeIcon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
+  const [command, setCommand] = useState(false);
+  const toggleCommand = useCallback(() => setCommand((v) => !v), []);
+  const closeCommand = useCallback(() => setCommand(false), []);
+  useCommandHotkey(toggleCommand);
 
   return (
     <div className="shell">
@@ -137,12 +142,18 @@ export function Shell() {
             <Menu size={20} />
           </button>
           <Annunciator />
+          <button type="button" className="cmd-trigger" onClick={toggleCommand} aria-label="Open the command bar" aria-keyshortcuts="Meta+K Control+K">
+            <Search size={15} aria-hidden />
+            <span>Jump to or run…</span>
+            <kbd>⌘K</kbd>
+          </button>
           <LiveLamp />
         </div>
         <main className="content" key={location.pathname}>
           <Outlet />
         </main>
       </div>
+      <CommandBar open={command} onClose={closeCommand} onTheme={cycleTheme} />
     </div>
   );
 }
