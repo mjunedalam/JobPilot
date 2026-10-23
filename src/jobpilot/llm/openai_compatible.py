@@ -6,12 +6,14 @@ Not used for Claude, which always goes through the official Anthropic SDK."""
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 import openai
 from pydantic import BaseModel, ValidationError
 
 from jobpilot.core.config import ReasoningEffort, StructuredMode
+from jobpilot.llm import progress
 from jobpilot.llm.base import (
     LLMError,
     LLMOutputInvalid,
@@ -22,6 +24,7 @@ from jobpilot.llm.base import (
 from jobpilot.llm.json_extract import parse_model
 from jobpilot.llm.schema_prompt import schema_instruction
 
+STREAM_UPDATE_S = 0.2
 REPAIR_ATTEMPTS = 1
 
 
@@ -57,8 +60,10 @@ class OpenAICompatibleProvider:
         ]
         usage = Usage()
         last_error = ""
-        for _ in range(REPAIR_ATTEMPTS + 1):
-            content, call_usage = self._complete(model, messages, schema, max_tokens)
+        for attempt in range(1, REPAIR_ATTEMPTS + 2):
+            if attempt > 1:
+                progress.emit(progress.StreamEvent("retry", self.name, model, attempt=attempt))
+            content, call_usage = self._complete(model, messages, schema, max_tokens, attempt)
             usage = Usage(
                 usage.input_tokens + call_usage.input_tokens,
                 usage.output_tokens + call_usage.output_tokens,
@@ -96,6 +101,7 @@ class OpenAICompatibleProvider:
         messages: list[dict[str, str]],
         schema: type[BaseModel],
         max_tokens: int,
+        attempt: int = 1,
     ) -> tuple[str, Usage]:
         kwargs: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
         if (response_format := self._response_format(schema)) is not None:
@@ -103,6 +109,8 @@ class OpenAICompatibleProvider:
         if self._effort is not None:
             kwargs["reasoning_effort"] = self._effort
         try:
+            if progress.current() is not None:
+                return self._stream(kwargs, model, attempt)
             response = self._client.chat.completions.create(**kwargs)
         except (openai.RateLimitError, openai.InternalServerError) as exc:
             raise RetryableLLMError(f"{self.name} {exc.status_code}") from exc
@@ -115,6 +123,36 @@ class OpenAICompatibleProvider:
         u = response.usage
         usage = Usage(u.prompt_tokens, u.completion_tokens) if u else Usage()
         return content, usage
+
+    def _stream(self, kwargs: dict[str, Any], model: str, attempt: int) -> tuple[str, Usage]:
+        """Same request, streamed, reporting the text so far (at most ~5 updates a second)."""
+        chunks: list[str] = []
+        tokens, usage, last = 0, None, 0.0
+        stream = self._client.chat.completions.create(
+            **kwargs, stream=True, stream_options={"include_usage": True}
+        )
+        for chunk in stream:
+            if chunk.usage is not None:
+                usage = Usage(chunk.usage.prompt_tokens, chunk.usage.completion_tokens)
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if not delta:
+                continue
+            chunks.append(delta)
+            tokens += 1  # servers send about one token per chunk; replaced by usage at the end
+            now = time.monotonic()
+            if now - last >= STREAM_UPDATE_S:
+                last = now
+                progress.emit(
+                    progress.StreamEvent(
+                        "delta", self.name, model, "".join(chunks), tokens, attempt
+                    )
+                )
+        content = "".join(chunks)
+        final = usage or Usage(0, tokens)
+        progress.emit(
+            progress.StreamEvent("delta", self.name, model, content, final.output_tokens, attempt)
+        )
+        return content, final
 
     def list_models(self) -> list[str]:
         try:

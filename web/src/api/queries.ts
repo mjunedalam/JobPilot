@@ -99,11 +99,57 @@ export function useProfileAnswers() {
   });
 }
 
-export function useImportResume() {
-  const invalidate = useInvalidate();
+export type ImportJob = Schemas["ImportJobOut"];
+const IMPORT_KEY = "jobpilot.importJob";
+
+/** Start reading a resume. Returns at once with a job to follow (see useImportJob). */
+export function useStartImport() {
   return useMutation({
     mutationFn: ({ file, label }: { file: File; label?: string }) => uploadResume(file, label),
-    onSuccess: () => invalidate(keys.profile, keys.versions, keys.missing),
+    onSuccess: (job) => rememberImport(job.id),
+  });
+}
+
+export function rememberImport(id: string | null) {
+  try {
+    if (id) sessionStorage.setItem(IMPORT_KEY, id);
+    else sessionStorage.removeItem(IMPORT_KEY);
+  } catch {
+    /* storage unavailable: the job is still found through /import/active */
+  }
+}
+
+export function rememberedImport(): string | null {
+  try {
+    return sessionStorage.getItem(IMPORT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** The import still running on the server, so a reload picks the live view up again. */
+export const useActiveImport = () =>
+  useQuery({
+    queryKey: ["profile", "import", "active"],
+    queryFn: async () => unwrap(await api.GET("/api/v1/profile/import/active")),
+    staleTime: Infinity,
+  });
+
+/** Live snapshot of one resume import: polled twice a second while it runs. */
+export function useResumeImportJob(id: string | null) {
+  const invalidate = useInvalidate();
+  return useQuery({
+    queryKey: ["profile", "import", id],
+    enabled: Boolean(id),
+    retry: false,
+    queryFn: async () => {
+      const job = unwrap(await api.GET("/api/v1/profile/import/{job_id}", {
+        params: { path: { job_id: id as string } },
+      }));
+      if (job.status === "done") void invalidate(keys.profile, keys.versions, keys.missing);
+      return job;
+    },
+    refetchInterval: (q) => (q.state.data && q.state.data.status !== "running" ? false : 500),
   });
 }
 

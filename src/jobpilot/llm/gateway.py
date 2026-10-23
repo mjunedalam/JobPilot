@@ -24,6 +24,7 @@ from jobpilot.core.config import (
     ProviderConfig,
 )
 from jobpilot.core.net import is_forbidden_endpoint
+from jobpilot.llm import progress
 from jobpilot.llm.anthropic_provider import AnthropicProvider
 from jobpilot.llm.base import (
     LLMError,
@@ -212,6 +213,7 @@ class LLMGateway:
                     reraise=True,
                 ):
                     with attempt:
+                        progress.emit(progress.StreamEvent("start", target.provider, target.model))
                         result = provider.structured(
                             model=target.model,
                             system=system,
@@ -222,6 +224,11 @@ class LLMGateway:
             except LLMError as exc:
                 gen.update(level="ERROR", status_message=str(exc))
                 raise
+            progress.emit(
+                progress.StreamEvent(
+                    "done", target.provider, target.model, tokens=result.usage.output_tokens
+                )
+            )
             cost = estimate_cost(self._config.pricing, target.model, result.usage)
             gen.update(
                 output=result.value.model_dump(mode="json"),

@@ -40,10 +40,14 @@ class ProfileAgent:
         self.answers = AnswerBank(session)
         self._extractor = extractor
 
-    def import_resume(self, path: Path, label: str | None = None) -> ImportResult:
+    def import_resume(
+        self, path: Path, label: str | None = None, text: str | None = None
+    ) -> ImportResult:
+        """`text`: the document's text when the caller already read it (to report progress)."""
         if self._extractor is None:
             raise RuntimeError("ProfileAgent was built without an extractor")
-        text = extract_text(path)
+        if text is None:
+            text = extract_text(path)
         extracted = self._extractor.extract(text)
         current = self.profiles.current()
         merged = merge_profiles(current, extracted)

@@ -19,6 +19,17 @@ from jobpilot.harness.tools import ToolRegistry
 from jobpilot.llm.base import StructuredResult, Usage
 
 
+@pytest.fixture(autouse=True)
+def _no_dotenv(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never read the developer's real .env (API keys, OAuth clients, tokens)."""
+    from jobpilot.core.config import Settings
+
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    for var in ("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "MS_CLIENT_ID", "MS_CLIENT_SECRET",
+                "TELEGRAM_BOT_TOKEN", "JOBPILOT_NOTIFY_WEBHOOK_URL"):  # fmt: skip
+        monkeypatch.delenv(var, raising=False)
+
+
 @pytest.fixture
 def sessions(tmp_path: Path) -> Iterator[sessionmaker[Session]]:
     # Real migrations, not create_all, so the migration itself is under test.

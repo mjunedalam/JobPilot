@@ -1389,3 +1389,373 @@ a.check-link:hover .check-go {
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
 }
+
+/* ---------- Resume import: live progress ---------- */
+
+.ip {
+  display: grid;
+  gap: var(--space-4);
+  animation: rise var(--duration-normal) var(--ease-out);
+}
+
+.ip-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ip-file,
+.ip-head-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ip-filename {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ip-clock {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  min-width: 4.5ch;
+  text-align: right;
+}
+
+/* Stepper: a vertical rail with one node per stage. */
+.ip-stages {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+
+.ip-node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--rule-strong);
+  background: var(--card);
+  color: var(--ink-3);
+  transition: background var(--duration-normal), border-color var(--duration-normal),
+    color var(--duration-normal);
+}
+
+.ip-rail {
+  position: absolute;
+  left: 13px;
+  top: 28px;
+  bottom: 0;
+  width: 2px;
+  background: var(--rule);
+}
+
+.ip-done .ip-rail {
+  background: var(--go);
+}
+
+.ip-done .ip-node {
+  background: var(--go);
+  border-color: var(--go);
+  color: var(--card);
+}
+
+.ip-active .ip-node {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.ip-active .ip-node::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--amber);
+  opacity: 0;
+  animation: ip-ping 1.6s var(--ease-out) infinite;
+}
+
+.ip-failed .ip-node {
+  background: var(--stop);
+  border-color: var(--stop);
+  color: var(--card);
+}
+
+@keyframes ip-ping {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+.ip-stage-text {
+  display: grid;
+  gap: 1px;
+  padding-top: 4px;
+}
+
+.ip-stage-label {
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.ip-pending .ip-stage-label {
+  color: var(--ink-3);
+}
+
+.ip-stage-detail {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  min-height: 1.2em;
+}
+
+.ip-took {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Meter: determinate while streaming, a moving sheen while the model reads. */
+.ip-meter-wrap {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ip-meter {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+
+.ip-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--amber), color-mix(in oklab, var(--amber) 70%, var(--go)));
+  border-radius: inherit;
+  transition: transform 600ms var(--ease-out);
+}
+
+.ip-done .ip-fill {
+  background: var(--go);
+}
+
+.ip-meter-fail .ip-fill {
+  background: var(--stop);
+}
+
+.ip-meter-wait .ip-fill {
+  background: var(--amber-soft);
+}
+
+.ip-meter-wait::after,
+.ip-running .ip-meter:not(.ip-meter-wait)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: ip-sheen 1.8s ease-in-out infinite;
+}
+
+@keyframes ip-sheen {
+  to { transform: translateX(100%); }
+}
+
+.ip-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  min-height: 1.3em;
+}
+
+/* Found so far: values fade in as the model writes them. */
+.ip-found {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+
+.ip-found-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ip-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--stop);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ip-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--stop);
+  animation: lamp-blink 1.2s ease-in-out infinite;
+}
+
+.ip-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.ip-field {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ip-field dt {
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.ip-field dd {
+  margin: 0;
+  min-height: 1.4em;
+  overflow-wrap: anywhere;
+}
+
+.ip-field-in dd {
+  animation: ip-in 420ms var(--ease-out);
+}
+
+.ip-ghost {
+  display: inline-block;
+  width: 70%;
+  height: 0.9em;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--rule) 25%, var(--card) 50%, var(--rule) 75%);
+  background-size: 200% 100%;
+  animation: ip-shimmer 1.4s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes ip-shimmer {
+  to { background-position: -200% 0; }
+}
+
+@keyframes ip-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.ip-skills-block {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ip-skills-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-size: var(--text-sm);
+}
+
+.ip-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ip-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  font-size: var(--text-sm);
+  animation: ip-pop 360ms var(--ease-out) both;
+}
+
+.ip-chip-ghost {
+  width: 64px;
+  height: 1.6em;
+  border-style: dashed;
+  background: transparent;
+  animation: lamp-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes ip-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: none; }
+}
+
+.ip-edu {
+  font-size: var(--text-sm);
+}
+
+.ip-outcome {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--go-soft);
+  color: var(--ink);
+  animation: ip-in 420ms var(--ease-out);
+}
+
+.ip-outcome > svg {
+  color: var(--go);
+  margin-top: 2px;
+}
+
+.ip-outcome div {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.ip-outcome-fail {
+  background: var(--stop-soft);
+}
+
+.ip-outcome-fail > svg {
+  color: var(--stop);
+}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
@@ -13,8 +14,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from jobpilot.core.net import is_local_endpoint
 
-DEFAULT_CONFIG_PATH = Path("config.yaml")
-DEFAULT_DATA_DIR = Path("data")
+
+def _home() -> Path:
+    """Where .env, config.yaml and data/ live: $JOBPILOT_HOME if set, else the project folder
+    when running from a checkout, else the current folder. Never the folder the server happens
+    to be started from (an IDE or launcher may start it from /)."""
+    if env := os.environ.get("JOBPILOT_HOME"):
+        return Path(env).expanduser().resolve()
+    checkout = Path(__file__).resolve().parents[3]
+    if (checkout / "pyproject.toml").is_file() and (checkout / "src" / "jobpilot").is_dir():
+        return checkout
+    return Path.cwd()
+
+
+HOME = _home()
+DEFAULT_CONFIG_PATH = HOME / "config.yaml"
+DEFAULT_DATA_DIR = HOME / "data"
 
 
 class _Frozen(BaseModel):
@@ -187,7 +202,7 @@ class AppConfig(_Frozen):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=HOME / ".env", extra="ignore")
 
     anthropic_api_key: str | None = None
     jobpilot_master_key: str | None = None

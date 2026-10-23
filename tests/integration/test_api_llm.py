@@ -170,18 +170,20 @@ def test_profile_import_upload(
             files={"file": ("cv.docx", fh)},
             data={"label": "main"},
         )
-    body = response.json()
-    assert response.status_code == 200, body
-    assert body["data"]["version"] == 1 and body["data"]["resume_label"] == "main"
-    assert any(m["field"] == "phone" for m in body["data"]["missing"])
-    assert {"email", "full_name"} <= set(body["data"]["updated"]) and body["data"]["kept"] == []
+    assert response.status_code == 202, response.json()
+    job = wait_import(client, response.json()["data"]["id"])
+    assert job["status"] == "done", job["error"]
+    assert [s["status"] for s in job["stages"]] == ["done"] * 4
+    result = job["result"]
+    assert result["version"] == 1 and result["resume_label"] == "main"
+    assert any(m["field"] == "phone" for m in result["missing"])
+    assert {"email", "full_name"} <= set(result["updated"]) and result["kept"] == []
 
 
 def test_profile_import_reports_kept_fields_and_runs_one_at_a_time(
     client: TestClient, ctx: AppContext, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from jobpilot.agents.profile.repository import ProfileRepository
-    from jobpilot.api.routes import profile as profile_routes
     from jobpilot.core.db import session_scope
 
     with session_scope(ctx.sessions) as s:
@@ -194,7 +196,7 @@ def test_profile_import_reports_kept_fields_and_runs_one_at_a_time(
     document.add_paragraph("Juned Alam, Engineer")
     document.save(str(resume))
 
-    assert profile_routes._IMPORT_LOCK.acquire(blocking=False)  # an import is running
+    ctx.imports._running = "someone-else"  # an import is running
     try:
         with resume.open("rb") as fh:
             busy = client.post(
@@ -202,12 +204,13 @@ def test_profile_import_reports_kept_fields_and_runs_one_at_a_time(
             )
         assert busy.status_code == 409 and "already being read" in busy.json()["error"]["message"]
     finally:
-        profile_routes._IMPORT_LOCK.release()
+        ctx.imports._running = None
 
     with resume.open("rb") as fh:
-        data = client.post(
+        started = client.post(
             "/api/v1/profile/import", headers=AUTH, files={"file": ("cv.docx", fh)}
         ).json()["data"]
+    data = wait_import(client, started["id"])["result"]
     # The confirmed name wins and is reported, so the user can see why it didn't change.
     assert data["kept"] == ["full_name"] and data["updated"] == ["email"]
 
@@ -260,3 +263,20 @@ def test_profile_qa_reports_bad_answers(client: TestClient) -> None:
     assert (
         response.status_code == 400 and "work_modes" in message and "notice_period_days" in message
     )
+
+
+def wait_import(client: TestClient, job_id: str, timeout: float = 10) -> dict:
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        job = client.get(f"/api/v1/profile/import/{job_id}", headers=AUTH).json()["data"]
+        if job["status"] != "running":
+            return job
+        time.sleep(0.05)
+    raise AssertionError("import did not finish")
+
+
+def test_import_job_unknown_and_active(client: TestClient) -> None:
+    assert client.get("/api/v1/profile/import/nope", headers=AUTH).status_code == 404
+    assert client.get("/api/v1/profile/import/active", headers=AUTH).json()["data"] is None

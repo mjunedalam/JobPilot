@@ -66,6 +66,44 @@ class ImportResultOut(BaseModel):
     kept: list[str] = []  # your existing value kept over a different one in the resume
 
 
+class ImportStageOut(BaseModel):
+    key: str
+    label: str
+    status: str  # pending | active | done | failed
+    detail: str
+    started_at: float | None
+    finished_at: float | None
+
+
+class ImportFoundOut(BaseModel):
+    fields: dict[str, str]
+    skills: list[str]
+    education: list[str]
+
+
+class ImportJobOut(BaseModel):
+    """A resume import in progress (or finished). Polled by the Profile page."""
+
+    id: str
+    filename: str
+    size_bytes: int
+    status: str  # running | done | failed
+    elapsed_s: float
+    stages: list[ImportStageOut]
+    model: str
+    provider: str
+    streaming: bool  # the provider streams; percent/ETA are live
+    words: int
+    tokens: int
+    tokens_per_s: float | None
+    percent: float | None
+    eta_s: int | None
+    attempt: int
+    found: ImportFoundOut  # details read from the model's answer so far
+    result: ImportResultOut | None
+    error: str
+
+
 class ProfileQAIn(BaseModel):
     answers: dict[str, str] = Field(
         ...,

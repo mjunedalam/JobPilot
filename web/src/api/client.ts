@@ -90,6 +90,6 @@ export async function uploadResume(file: File, label?: string) {
     body: form,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
-  const body = (await response.json().catch(() => ({}))) as EnvelopeLike<Schemas["ImportResultOut"]>;
+  const body = (await response.json().catch(() => ({}))) as EnvelopeLike<Schemas["ImportJobOut"]>;
   return unwrap({ data: body, response });
 }

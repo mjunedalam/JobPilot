@@ -18,6 +18,7 @@ from jobpilot.agents.orchestrator.apply_graph import build_apply_graph
 from jobpilot.agents.orchestrator.reply_graph import build_reply_graph
 from jobpilot.agents.orchestrator.runtime import WorkflowRuntime
 from jobpilot.agents.portal.agent import PortalConnector
+from jobpilot.agents.profile.import_jobs import ImportJobs
 from jobpilot.agents.reply.service import ReplyService
 from jobpilot.agents.search.agent import SearchAgent
 from jobpilot.agents.specs import APPLICATION, EMAIL, REPLY
@@ -86,6 +87,10 @@ class AppContext:
     @cached_property
     def gateway(self) -> RuntimeGateway:
         return RuntimeGateway(self.sessions, self.config.llm, self.optional_vault, self.tracer)
+
+    @cached_property
+    def imports(self) -> ImportJobs:
+        return ImportJobs()
 
     @cached_property
     def tools(self) -> ToolRegistry:

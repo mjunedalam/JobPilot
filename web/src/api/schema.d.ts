@@ -104,9 +104,47 @@ export interface paths {
         put?: never;
         /**
          * Import Resume
-         * @description Extract the profile from a resume with the `extraction` model, through the harness.
+         * @description Start reading a resume with the `extraction` model, through the harness. Returns at once;
+         *     follow the job at GET /profile/import/{job_id} (stages, live tokens and details found).
          */
         post: operations["import_resume_api_v1_profile_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profile/import/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Active Import
+         * @description The import still running, if any: the page picks it up again after a reload.
+         */
+        get: operations["active_import_api_v1_profile_import_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profile/import/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Import Status */
+        get: operations["import_status_api_v1_profile_import__job_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1139,14 +1177,14 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
-        /** Envelope[ImportResultOut] */
-        Envelope_ImportResultOut_: {
+        /** Envelope[ImportJobOut] */
+        Envelope_ImportJobOut_: {
             /**
              * Success
              * @default true
              */
             success: boolean;
-            data?: components["schemas"]["ImportResultOut"] | null;
+            data?: components["schemas"]["ImportJobOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -1290,6 +1328,17 @@ export interface components {
              */
             success: boolean;
             data?: components["schemas"]["StartedOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[Union[ImportJobOut, NoneType]] */
+        Envelope_Union_ImportJobOut__NoneType__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["ImportJobOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -1474,10 +1523,61 @@ export interface components {
             /** Tracing */
             tracing: string;
         };
+        /** ImportFoundOut */
+        ImportFoundOut: {
+            /** Fields */
+            fields: {
+                [key: string]: string;
+            };
+            /** Skills */
+            skills: string[];
+            /** Education */
+            education: string[];
+        };
         /** ImportJobIn */
         ImportJobIn: {
             /** Url */
             url: string;
+        };
+        /**
+         * ImportJobOut
+         * @description A resume import in progress (or finished). Polled by the Profile page.
+         */
+        ImportJobOut: {
+            /** Id */
+            id: string;
+            /** Filename */
+            filename: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Status */
+            status: string;
+            /** Elapsed S */
+            elapsed_s: number;
+            /** Stages */
+            stages: components["schemas"]["ImportStageOut"][];
+            /** Model */
+            model: string;
+            /** Provider */
+            provider: string;
+            /** Streaming */
+            streaming: boolean;
+            /** Words */
+            words: number;
+            /** Tokens */
+            tokens: number;
+            /** Tokens Per S */
+            tokens_per_s: number | null;
+            /** Percent */
+            percent: number | null;
+            /** Eta S */
+            eta_s: number | null;
+            /** Attempt */
+            attempt: number;
+            found: components["schemas"]["ImportFoundOut"];
+            result: components["schemas"]["ImportResultOut"] | null;
+            /** Error */
+            error: string;
         };
         /** ImportResultOut */
         ImportResultOut: {
@@ -1501,6 +1601,21 @@ export interface components {
              * @default []
              */
             kept: string[];
+        };
+        /** ImportStageOut */
+        ImportStageOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: string;
+            /** Started At */
+            started_at: number | null;
+            /** Finished At */
+            finished_at: number | null;
         };
         /** JobOut */
         JobOut: {
@@ -2276,12 +2391,63 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ImportJobOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    active_import_api_v1_profile_import_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Envelope_ImportResultOut_"];
+                    "application/json": components["schemas"]["Envelope_Union_ImportJobOut__NoneType__"];
+                };
+            };
+        };
+    };
+    import_status_api_v1_profile_import__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ImportJobOut_"];
                 };
             };
             /** @description Validation Error */

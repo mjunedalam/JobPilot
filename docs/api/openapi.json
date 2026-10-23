@@ -222,7 +222,7 @@
           "profile"
         ],
         "summary": "Import Resume",
-        "description": "Extract the profile from a resume with the `extraction` model, through the harness.",
+        "description": "Start reading a resume with the `extraction` model, through the harness. Returns at once;\nfollow the job at GET /profile/import/{job_id} (stages, live tokens and details found).",
         "operationId": "import_resume_api_v1_profile_import_post",
         "requestBody": {
           "content": {
@@ -235,12 +235,12 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Envelope_ImportResultOut_"
+                  "$ref": "#/components/schemas/Envelope_ImportJobOut_"
                 }
               }
             }
@@ -261,6 +261,80 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/v1/profile/import/active": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Active Import",
+        "description": "The import still running, if any: the page picks it up again after a reload.",
+        "operationId": "active_import_api_v1_profile_import_active_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_Union_ImportJobOut__NoneType__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/import/{job_id}": {
+      "get": {
+        "tags": [
+          "profile"
+        ],
+        "summary": "Import Status",
+        "operationId": "import_status_api_v1_profile_import__job_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ImportJobOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/profile/versions": {
@@ -2933,7 +3007,7 @@
         "type": "object",
         "title": "Envelope[HealthOut]"
       },
-      "Envelope_ImportResultOut_": {
+      "Envelope_ImportJobOut_": {
         "properties": {
           "success": {
             "type": "boolean",
@@ -2943,7 +3017,7 @@
           "data": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ImportResultOut"
+                "$ref": "#/components/schemas/ImportJobOut"
               },
               {
                 "type": "null"
@@ -2965,7 +3039,7 @@
           }
         },
         "type": "object",
-        "title": "Envelope[ImportResultOut]"
+        "title": "Envelope[ImportJobOut]"
       },
       "Envelope_JobOut_": {
         "properties": {
@@ -3408,6 +3482,40 @@
         },
         "type": "object",
         "title": "Envelope[StartedOut]"
+      },
+      "Envelope_Union_ImportJobOut__NoneType__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportJobOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[Union[ImportJobOut, NoneType]]"
       },
       "Envelope_list_AnswerOut__": {
         "properties": {
@@ -3967,6 +4075,38 @@
         ],
         "title": "HealthOut"
       },
+      "ImportFoundOut": {
+        "properties": {
+          "fields": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fields"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Skills"
+          },
+          "education": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Education"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fields",
+          "skills",
+          "education"
+        ],
+        "title": "ImportFoundOut"
+      },
       "ImportJobIn": {
         "properties": {
           "url": {
@@ -3981,6 +4121,134 @@
           "url"
         ],
         "title": "ImportJobIn"
+      },
+      "ImportJobOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "title": "Size Bytes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "elapsed_s": {
+            "type": "number",
+            "title": "Elapsed S"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/ImportStageOut"
+            },
+            "type": "array",
+            "title": "Stages"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "streaming": {
+            "type": "boolean",
+            "title": "Streaming"
+          },
+          "words": {
+            "type": "integer",
+            "title": "Words"
+          },
+          "tokens": {
+            "type": "integer",
+            "title": "Tokens"
+          },
+          "tokens_per_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Per S"
+          },
+          "percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percent"
+          },
+          "eta_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta S"
+          },
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt"
+          },
+          "found": {
+            "$ref": "#/components/schemas/ImportFoundOut"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "size_bytes",
+          "status",
+          "elapsed_s",
+          "stages",
+          "model",
+          "provider",
+          "streaming",
+          "words",
+          "tokens",
+          "tokens_per_s",
+          "percent",
+          "eta_s",
+          "attempt",
+          "found",
+          "result",
+          "error"
+        ],
+        "title": "ImportJobOut",
+        "description": "A resume import in progress (or finished). Polled by the Profile page."
       },
       "ImportResultOut": {
         "properties": {
@@ -4038,6 +4306,58 @@
           "usage"
         ],
         "title": "ImportResultOut"
+      },
+      "ImportStageOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "status",
+          "detail",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "ImportStageOut"
       },
       "JobOut": {
         "properties": {
