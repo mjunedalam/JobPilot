@@ -29,6 +29,8 @@
 .brand-name {
   display: block;
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.6rem;
   line-height: 1;
 }
@@ -36,7 +38,8 @@
 .brand-sub {
   display: block;
   font-family: var(--font-display);
-  font-style: italic;
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   color: var(--ink-3);
 }
 
@@ -299,9 +302,9 @@
 }
 
 .btn-primary {
-  background: var(--amber);
-  color: var(--amber-ink);
-  box-shadow: 0 6px 18px -8px var(--amber);
+  background: var(--primary);
+  color: var(--primary-ink);
+  box-shadow: 0 8px 22px -12px var(--primary);
 }
 
 .btn-secondary {
@@ -514,6 +517,8 @@ textarea.input {
 
 .empty-title {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.5rem;
 }
 

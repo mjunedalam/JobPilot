@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from jobpilot.agents.profile.extractor import MAX_SKILLS
+from jobpilot.core.events import bus
 from jobpilot.llm.progress import StreamEvent, listen
 
 STAGES = (
@@ -107,6 +108,7 @@ class ImportJob:
     result: dict[str, Any] | None = None
     error: str = ""
     finished: float | None = None
+    _announced: float = 0.0
 
     # ---- stage helpers ----------------------------------------------------------------
 
@@ -116,12 +118,14 @@ class ImportJob:
     def begin(self, key: str, detail: str = "") -> None:
         s = self.stage(key)
         s.status, s.detail, s.started_at = "active", detail, time.time()
+        self.announce(force=True)
 
     def finish(self, key: str, detail: str | None = None) -> None:
         s = self.stage(key)
         s.status, s.finished_at = "done", time.time()
         if detail is not None:
             s.detail = detail
+        self.announce(force=True)
 
     def fail(self, message: str) -> None:
         for s in self.stages:
@@ -158,6 +162,14 @@ class ImportJob:
                 self.finish("model", f"{self.tokens:,} tokens written")
                 self.begin("save", "Validating and merging into your profile")
         self.last_update_at = now
+        self.announce()
+
+    def announce(self, force: bool = False) -> None:
+        """Tell live pages to refresh this import (at most ~3 times a second)."""
+        now = time.time()
+        if force or now - self._announced >= 0.33:
+            self._announced = now
+            bus.publish("import", {"id": self.id, "status": self.status})
 
     def snapshot(self) -> dict[str, Any]:
         now = self.finished or time.time()
@@ -238,6 +250,7 @@ class ImportJobs:
             else:
                 job.status, job.finished = "done", time.time()
             self._running = None
+        job.announce(force=True)
 
     def get(self, job_id: str) -> ImportJob | None:
         return self._jobs.get(job_id)

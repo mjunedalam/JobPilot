@@ -24,6 +24,7 @@ from tenacity.wait import WaitBaseT
 from jobpilot.core.audit import log_action
 from jobpilot.core.config import ModelRole
 from jobpilot.core.db import session_scope
+from jobpilot.core.events import bus
 from jobpilot.core.hashing import content_sha256
 from jobpilot.core.killswitch import KillSwitch
 from jobpilot.core.models import IdempotencyRecord
@@ -101,14 +102,19 @@ class AgentHarness:
         with self._tracer.observe(
             f"agent.{self.spec.name}", as_type="agent", input={"task": task}, metadata=metadata
         ) as span:
+            bus.publish("agent", {"agent": self.spec.name, "task": task, "phase": "start"})
             try:
                 yield
             except Exception as exc:
                 span.update(level="ERROR", status_message=str(exc), metadata=self.usage)
                 self._audit("run_failed", {"task": task, "error": str(exc), **self.usage})
+                bus.publish("agent", {"agent": self.spec.name, "task": task, "phase": "error"})
                 raise
             span.update(metadata=self.usage)
             self._audit("run_completed", {"task": task, **self.usage})
+            bus.publish(
+                "agent", {"agent": self.spec.name, "task": task, "phase": "done", **self.usage}
+            )
 
     # ---- LLM -------------------------------------------------------------------------
 
@@ -126,14 +132,29 @@ class AgentHarness:
         step/token/cost budget and output guardrails."""
         self._kill.check()
         self._tracker.charge_step()
-        result = self._llm.structured(
-            role=role or self.spec.model_role,
-            system=system,
-            user=user,
-            schema=schema,
-            prompt_name=prompt_name,
-            prompt_version=prompt_version,
-        )
+        live_role = str(role or self.spec.model_role)
+        bus.publish("llm", {"agent": self.spec.name, "role": live_role, "phase": "start"})
+        try:
+            result = self._llm.structured(
+                role=role or self.spec.model_role,
+                system=system,
+                user=user,
+                schema=schema,
+                prompt_name=prompt_name,
+                prompt_version=prompt_version,
+            )
+        except Exception as exc:
+            bus.publish(
+                "llm",
+                {"agent": self.spec.name, "role": live_role, "phase": "error",
+                 "error": type(exc).__name__},
+            )  # fmt: skip
+            raise
+        bus.publish(
+            "llm",
+            {"agent": self.spec.name, "role": live_role, "phase": "done", "model": result.model,
+             "tokens": result.usage.total},
+        )  # fmt: skip
         self._tracker.charge_llm(result.usage.total, result.cost_usd)
         self._enforce_guardrails(result.value)
         return result
@@ -141,6 +162,25 @@ class AgentHarness:
     # ---- tools -----------------------------------------------------------------------
 
     def call_tool(
+        self,
+        name: str,
+        args: BaseModel | dict[str, Any],
+        *,
+        approval: ApprovalToken | None = None,
+        idempotency_key: str | None = None,
+    ) -> BaseModel:
+        """Run one tool through every gate. Publishes start/done/error for the live views."""
+        live = {"agent": self.spec.name, "tool": name}
+        bus.publish("tool", {**live, "phase": "start"})
+        try:
+            out = self._call_tool(name, args, approval=approval, idempotency_key=idempotency_key)
+        except Exception as exc:
+            bus.publish("tool", {**live, "phase": "error", "error": type(exc).__name__})
+            raise
+        bus.publish("tool", {**live, "phase": "done"})
+        return out
+
+    def _call_tool(
         self,
         name: str,
         args: BaseModel | dict[str, Any],

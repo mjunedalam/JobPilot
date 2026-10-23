@@ -7,6 +7,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from jobpilot.core.activity import describe
+from jobpilot.core.events import bus
 from jobpilot.core.hashing import content_sha256
 from jobpilot.core.models import AuditLog
 from jobpilot.core.redaction import redact_keys as redact
@@ -31,6 +33,7 @@ def log_action(
     )
     session.add(row)
     session.flush()
+    _publish(row)
     return row
 
 
@@ -60,6 +63,7 @@ def log_decision(
     )
     session.add(row)
     session.flush()
+    _publish(row)
     return row
 
 
@@ -78,3 +82,21 @@ def find_decision(
         .limit(1)
     )
     return session.scalars(stmt).first()
+
+
+def feed_item(row: AuditLog) -> dict[str, Any]:
+    """Live feed entry: who did what, to which entity. Never the payload's content."""
+    return {
+        "id": row.id,
+        "ts": row.ts.timestamp() if row.ts else None,
+        "actor": row.actor,
+        "action": row.action,
+        "checkpoint": row.checkpoint,
+        "entity_type": row.entity_type,
+        "entity_id": row.entity_id,
+        "text": describe(row.actor, row.action, row.checkpoint, row.entity_id, row.payload),
+    }
+
+
+def _publish(row: AuditLog) -> None:
+    bus.publish("audit", feed_item(row))

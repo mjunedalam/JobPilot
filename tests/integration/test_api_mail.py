@@ -206,3 +206,11 @@ def test_reply_again_starts_a_new_reply_once(setup, tmp_path) -> None:  # noqa: 
     again = client.post(f"/api/v1/emails/{email['id']}/reply", headers=AUTH)
     assert again.status_code == 200 and again.json()["data"]["action_status"] == "needs_action"
     assert wait_decision(client, "H6")["payload"]["email"]["email_id"] == email["id"]
+
+
+def test_event_stream_requires_token_and_activity_lists_lines(setup) -> None:  # noqa: ANN001
+    client, ctx, _ = setup
+    assert client.get("/api/v1/events").status_code == 401
+    client.post("/api/v1/mail/connect", json={"provider": "local"}, headers=AUTH)
+    feed = client.get("/api/v1/activity", headers=AUTH).json()["data"]
+    assert feed[0]["text"] == "Mailbox connected" and "action" in feed[0]

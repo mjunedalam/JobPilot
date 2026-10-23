@@ -16,7 +16,17 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from jobpilot.api.envelope import fail
-from jobpilot.api.routes import answers, jobs, llm, mail, portals, profile, system, workflows
+from jobpilot.api.routes import (
+    answers,
+    events,
+    jobs,
+    llm,
+    mail,
+    portals,
+    profile,
+    system,
+    workflows,
+)
 from jobpilot.core.context import AppContext
 from jobpilot.core.killswitch import KillSwitchEngaged
 from jobpilot.core.scheduler import build_scheduler
@@ -63,7 +73,7 @@ def create_app(
         redoc_url=None,
     )
     app.state.ctx = ctx
-    for module in (system, profile, answers, llm, jobs, portals, workflows, mail):
+    for module in (system, profile, answers, llm, jobs, portals, workflows, mail, events):
         app.include_router(module.router, prefix=API_PREFIX)
     _register_error_handlers(app)
 

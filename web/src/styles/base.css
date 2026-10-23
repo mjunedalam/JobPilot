@@ -47,6 +47,8 @@ h3 {
 h1,
 h2 {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
 }
 
 p {

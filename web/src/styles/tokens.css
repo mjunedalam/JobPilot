@@ -1,11 +1,12 @@
-/* JobPilot design tokens: "flight deck" editorial.
-   Day = warm paper and ink. Night = cockpit black with amber instruments.
-   Colour is semantic: amber = attention/action, go = local/approved, sky = cloud, stop = kill switch. */
+/* JobPilot design tokens.
+   Light = "Paper & Ink": warm ivory, serif headlines, letter-like cards.
+   Dark  = "Night Shift": mission-control black, amber instruments, teal signals.
+   Colour is semantic in both: amber = needs you / primary action, go = done / local / approved,
+   sky = live work in progress, stop = kill switch and failures. */
 
 :root {
-  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
-  --font-ui: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-ui: "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
@@ -37,78 +38,93 @@
 
 :root,
 :root[data-theme="light"] {
-  --paper: #f3efe6;
-  --paper-2: #ebe5d8;
-  --card: #fbf9f4;
-  --ink: #1a1712;
-  --ink-2: #57514a;
-  --ink-3: #8a8274;
-  --rule: #ddd5c5;
-  --rule-strong: #c9bfab;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --display-weight: 500;
+  --display-tracking: -0.025em;
+  --paper: #f6f2ea;
+  --paper-2: #efe8dc;
+  --card: #fffdf8;
+  --ink: #16130f;
+  --ink-2: #554e45;
+  --ink-3: #6f665b;
+  --rule: #dcd3c4;
+  --rule-strong: #c6bba8;
 
-  --amber: #d9480f;
-  --amber-ink: #fbf9f4;
-  --amber-soft: #f8e1d1;
-  --go: #2f7d4f;
-  --go-soft: #dcecdf;
-  --sky: #2b59c3;
-  --sky-soft: #dde5f6;
-  --stop: #b42318;
-  --stop-soft: #f6dad6;
+  --amber: #9a3b12;
+  --amber-ink: #fffdf8;
+  --amber-soft: #f6e3d6;
+  --go: #2f5d50;
+  --go-soft: #dde9e3;
+  --sky: #2b4bae;
+  --sky-soft: #e1e6f6;
+  --stop: #a3221a;
+  --stop-soft: #f5dcd8;
+  --primary: #16130f;
+  --primary-ink: #fffdf8;
 
-  --shadow-card: 0 1px 0 rgb(26 23 18 / 0.04), 0 12px 32px -18px rgb(26 23 18 / 0.25);
-  --shadow-pop: 0 18px 50px -20px rgb(26 23 18 / 0.45);
-  --grain-opacity: 0.35;
+  --shadow-card: 0 1px 0 rgb(22 19 15 / 0.04), 0 18px 40px -28px rgb(22 19 15 / 0.35);
+  --shadow-pop: 0 18px 50px -20px rgb(22 19 15 / 0.45);
+  --grain-opacity: 0.3;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0e1013;
-    --paper-2: #14171c;
-    --card: #181b21;
-    --ink: #ece7dd;
-    --ink-2: #aaa397;
-    --ink-3: #6f6a60;
-    --rule: #2a2e35;
-    --rule-strong: #3a3f48;
+    --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --display-weight: 600;
+    --display-tracking: -0.02em;
+    --paper: #0b0d10;
+    --paper-2: #101318;
+    --card: #12151a;
+    --ink: #e8eaed;
+    --ink-2: #9aa3b0;
+    --ink-3: #8a93a1;
+    --rule: #1e232b;
+    --rule-strong: #2c3340;
 
-    --amber: #ff8a3d;
-    --amber-ink: #160b04;
-    --amber-soft: rgb(255 138 61 / 0.14);
-    --go: #5bc28a;
-    --go-soft: rgb(91 194 138 / 0.14);
-    --sky: #7aa2ff;
-    --sky-soft: rgb(122 162 255 / 0.14);
+    --amber: #f5a524;
+    --amber-ink: #0b0d10;
+    --amber-soft: rgb(245 165 36 / 0.13);
+    --go: #3fd0b5;
+    --go-soft: rgb(63 208 181 / 0.13);
+    --sky: #5fe1ff;
+    --sky-soft: rgb(95 225 255 / 0.12);
     --stop: #ff6b5e;
     --stop-soft: rgb(255 107 94 / 0.14);
+    --primary: #f5a524;
+    --primary-ink: #0b0d10;
 
-    --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03), 0 16px 40px -22px rgb(0 0 0 / 0.8);
-    --shadow-pop: 0 24px 60px -20px rgb(0 0 0 / 0.85);
-    --grain-opacity: 0.18;
+    --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03), 0 16px 40px -22px rgb(0 0 0 / 0.85);
+    --shadow-pop: 0 24px 60px -20px rgb(0 0 0 / 0.9);
+    --grain-opacity: 0.12;
   }
 }
 
 :root[data-theme="dark"] {
-  --paper: #0e1013;
-  --paper-2: #14171c;
-  --card: #181b21;
-  --ink: #ece7dd;
-  --ink-2: #aaa397;
-  --ink-3: #6f6a60;
-  --rule: #2a2e35;
-  --rule-strong: #3a3f48;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --display-weight: 600;
+  --display-tracking: -0.02em;
+  --paper: #0b0d10;
+  --paper-2: #101318;
+  --card: #12151a;
+  --ink: #e8eaed;
+  --ink-2: #9aa3b0;
+  --ink-3: #8a93a1;
+  --rule: #1e232b;
+  --rule-strong: #2c3340;
 
-  --amber: #ff8a3d;
-  --amber-ink: #160b04;
-  --amber-soft: rgb(255 138 61 / 0.14);
-  --go: #5bc28a;
-  --go-soft: rgb(91 194 138 / 0.14);
-  --sky: #7aa2ff;
-  --sky-soft: rgb(122 162 255 / 0.14);
+  --amber: #f5a524;
+  --amber-ink: #0b0d10;
+  --amber-soft: rgb(245 165 36 / 0.13);
+  --go: #3fd0b5;
+  --go-soft: rgb(63 208 181 / 0.13);
+  --sky: #5fe1ff;
+  --sky-soft: rgb(95 225 255 / 0.12);
   --stop: #ff6b5e;
   --stop-soft: rgb(255 107 94 / 0.14);
+  --primary: #f5a524;
+  --primary-ink: #0b0d10;
 
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03), 0 16px 40px -22px rgb(0 0 0 / 0.8);
-  --shadow-pop: 0 24px 60px -20px rgb(0 0 0 / 0.85);
-  --grain-opacity: 0.18;
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03), 0 16px 40px -22px rgb(0 0 0 / 0.85);
+  --shadow-pop: 0 24px 60px -20px rgb(0 0 0 / 0.9);
+  --grain-opacity: 0.12;
 }

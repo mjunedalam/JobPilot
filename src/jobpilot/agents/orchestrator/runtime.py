@@ -23,6 +23,7 @@ from sqlalchemy import CursorResult, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from jobpilot.core.db import session_scope
+from jobpilot.core.events import bus
 from jobpilot.core.killswitch import KillSwitch, KillSwitchEngaged
 from jobpilot.core.models import WorkflowRun
 
@@ -82,6 +83,8 @@ class WorkflowRuntime:
             run.status, run.error = status, error[:1000]
             if summary is not None:
                 run.summary = summary
+            run_kind = run.kind
+        bus.publish("workflow", {"thread_id": thread_id, "kind": run_kind, "status": status})
 
     # ---- driving ----------------------------------------------------------------------
 
@@ -133,6 +136,7 @@ class WorkflowRuntime:
             claimed = cast(CursorResult[Any], result).rowcount
         if not claimed:
             raise WorkflowError(STALE)
+        bus.publish("workflow", {"thread_id": thread_id, "kind": kind, "status": "running"})
         return self._workers[kind].submit(self._drive_resume, kind, thread_id, interrupt_id, answer)
 
     def _drive_resume(

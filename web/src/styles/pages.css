@@ -243,6 +243,8 @@ a.check-link:hover .check-go {
 
 .route-role {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.7rem;
   line-height: 1;
 }
@@ -579,6 +581,8 @@ a.check-link:hover .check-go {
 
 .answer-q {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.35rem;
 }
 
@@ -843,6 +847,8 @@ a.check-link:hover .check-go {
 
 .job-title {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.55rem;
   line-height: 1.05;
   padding-right: var(--space-6);
@@ -937,6 +943,8 @@ a.check-link:hover .check-go {
 
 .portal-name {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.8rem;
   line-height: 1;
 }
@@ -1132,6 +1140,8 @@ a.check-link:hover .check-go {
 
 .app-title {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.4rem;
 }
 
@@ -1238,6 +1248,8 @@ a.check-link:hover .check-go {
 
 .mail-subject {
   font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  letter-spacing: var(--display-tracking);
   font-size: 1.35rem;
   line-height: 1.2;
 }
