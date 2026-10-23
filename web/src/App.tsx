@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { Shell } from "./components/Shell";
 import { TokenGate } from "./components/TokenGate";
+import { LiveProvider } from "./components/live/LiveProvider";
 import { Answers } from "./pages/Answers";
 import { Approvals } from "./pages/Approvals";
 import { FlightDeck } from "./pages/FlightDeck";
@@ -33,7 +34,9 @@ const router = createBrowserRouter([
 export function App() {
   return (
     <TokenGate>
-      <RouterProvider router={router} />
+      <LiveProvider>
+        <RouterProvider router={router} />
+      </LiveProvider>
     </TokenGate>
   );
 }

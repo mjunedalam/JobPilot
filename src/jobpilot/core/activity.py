@@ -56,6 +56,13 @@ ACTIONS = {
     ),
     "profile_version_created": lambda p: "Profile updated",
     "resume_added": lambda p: "Resume saved",
+    "autopilot_run": lambda p: (
+        f"Autopilot ran · {p.get('new_jobs', 0)} new jobs"
+        + (" · shortlist waiting for you" if p.get("review_started") else "")
+    ),
+    "autopilot_settings": lambda p: (
+        f"Autopilot {'on' if p.get('enabled') else 'off'} · {p.get('time', '')}"
+    ),
 }
 
 

@@ -9,8 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 
-from jobpilot.agents.application.selection import SelectionError, parse_selection
-from jobpilot.agents.orchestrator.reply_graph import EDITABLE
+from jobpilot.agents.orchestrator.answers import InvalidAnswer, validate_answer
 from jobpilot.agents.orchestrator.runtime import PendingDecision, WorkflowError
 from jobpilot.api.deps import AUTH, Ctx, DbSession, RequestId
 from jobpilot.api.envelope import Envelope, ok
@@ -22,7 +21,6 @@ from jobpilot.api.workflow_schemas import (
     WorkflowOut,
 )
 from jobpilot.core.models import Application, Job
-from jobpilot.mail.base import split_addresses
 
 router = APIRouter(tags=["workflows"], dependencies=AUTH)
 
@@ -38,77 +36,10 @@ def _decision_out(p: PendingDecision) -> DecisionOut:
 
 
 def _validate(decision: PendingDecision, answer: dict[str, Any]) -> None:
-    """Reject malformed answers here, before the workflow is resumed."""
-    allowed = decision.payload.get("allowed", [])
-    action = answer.get("action")
-    if action not in allowed:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"action must be one of {allowed}")
-    checkpoint = decision.payload.get("checkpoint")
-    if checkpoint == "H3" and action == "approve":
-        try:
-            parse_selection(str(answer.get("selection", "all")), len(decision.payload["jobs"]))
-        except SelectionError as exc:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
-    if checkpoint == "H4" and action == "answer":
-        keys = {q["key"] for q in decision.payload["questions"]}
-        values = answer.get("values")
-        if not isinstance(values, dict) or set(values) - keys:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "values must answer the listed fields")
-        missing = [k for k in keys if not str(values.get(k, "")).strip()]
-        if missing:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"answer every field: {missing}")
-    if checkpoint == "H6" and action == "draft":
-        _check_text(answer.get("instruction", ""), "instruction", 1000, required=False)
-    if checkpoint == "H7":
-        _validate_h7(decision, action, answer)
-    if checkpoint == "H5" and action == "edit":
-        keys = set(decision.payload.get("keys", {}).values())
-        if not isinstance(answer.get("values"), dict) or set(answer["values"]) - keys:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST, "edit only fields shown in the preview"
-            )
-
-
-def _check_text(value: Any, name: str, limit: int, *, required: bool) -> None:
-    if not isinstance(value, str) or len(value) > limit or (required and not value.strip()):
-        need = "non-empty " if required else ""
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{name} must be {need}text up to {limit}")
-
-
-def _check_addresses(value: Any, name: str, *, required: bool) -> None:
-    ok_list = isinstance(value, list) and all(isinstance(v, str) for v in value)
-    if not ok_list or len(value) > 10 or len(split_addresses(value)) != len(value):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{name} must be a list of addresses")
-    if required and not value:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{name} needs at least one address")
-
-
-def _validate_h7(decision: PendingDecision, action: Any, answer: dict[str, Any]) -> None:
-    if action == "regenerate":
-        _check_text(answer.get("instruction", ""), "instruction", 1000, required=False)
-    if action != "edit":
-        return
-    unknown = set(answer) - {"action", *EDITABLE}
-    if unknown:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"cannot edit {sorted(unknown)}")
-    if decision.payload.get("draft") is None and "body" not in answer:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "write the reply text")
-    if "to" in answer:
-        _check_addresses(answer["to"], "to", required=True)
-    if "cc" in answer:
-        _check_addresses(answer["cc"], "cc", required=False)
-    if "subject" in answer:
-        _check_text(answer["subject"], "subject", 300, required=True)
-    if "body" in answer:
-        _check_text(answer["body"], "body", 10_000, required=True)
-    if "attachments" in answer:
-        items = answer["attachments"]
-        if (
-            not isinstance(items, list)
-            or len(items) > 5
-            or not all(isinstance(i, int) and not isinstance(i, bool) for i in items)
-        ):
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "attachments must be resume ids")
+    try:
+        validate_answer(decision, answer)
+    except InvalidAnswer as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
 
 @router.post("/workflows/apply", response_model=Envelope[StartedOut], status_code=202)

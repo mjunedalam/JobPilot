@@ -172,7 +172,11 @@ class PortalsConfig(_Frozen):
 class NotificationsConfig(_Frozen):
     # desktop | telegram | webhook. The Approvals page always shows H6 regardless.
     channels: tuple[str, ...] = ("desktop",)
-    telegram_chat_id: str = ""
+    telegram_chat_id: str = ""  # or link from the app (Inbox → Notifications → Link Telegram)
+    # Approve / reject from Telegram when TELEGRAM_BOT_TOKEN is set.
+    telegram_approvals: bool = True
+    # No sound during these hours (messages still arrive silently), e.g. "22:00-08:00".
+    quiet_hours: str = Field("", pattern=r"^$|^\d{2}:\d{2}-\d{2}:\d{2}$")
 
 
 class APIConfig(_Frozen):

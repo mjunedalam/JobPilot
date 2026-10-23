@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -15,6 +15,7 @@ from jobpilot.agents.application.service import ApplicationService
 from jobpilot.agents.email.monitor import EmailMonitor
 from jobpilot.agents.email.otp import EmailOtpSource
 from jobpilot.agents.orchestrator.apply_graph import build_apply_graph
+from jobpilot.agents.orchestrator.autopilot import Autopilot
 from jobpilot.agents.orchestrator.reply_graph import build_reply_graph
 from jobpilot.agents.orchestrator.runtime import WorkflowRuntime
 from jobpilot.agents.portal.agent import PortalConnector
@@ -32,6 +33,7 @@ from jobpilot.harness.tools import ToolRegistry
 from jobpilot.llm.settings import PrivacyState, RuntimeGateway
 from jobpilot.mail.service import MailService
 from jobpilot.notifications import Dispatcher, build_dispatcher
+from jobpilot.notifications.telegram_approvals import TelegramApprovals
 from jobpilot.observability.tracing import Tracer, build_tracer
 from jobpilot.portals.base import PortalAdapter
 from jobpilot.portals.browser import ApplyBrowser, PageFetcher, PlaywrightFetcher
@@ -217,11 +219,32 @@ class AppContext:
         )
 
     @cached_property
+    def telegram(self) -> TelegramApprovals | None:
+        """Phone approvals, when a bot token is set (TELEGRAM_BOT_TOKEN)."""
+        import httpx
+
+        cfg = self.config.notifications
+        if not self.settings.telegram_bot_token or not cfg.telegram_approvals:
+            return None
+        return TelegramApprovals(
+            token=self.settings.telegram_bot_token,
+            sessions=self.sessions,
+            runtime=self.workflows,
+            http=httpx.Client(follow_redirects=False),
+            chat_id=cfg.telegram_chat_id,
+            quiet_hours=cfg.quiet_hours,
+            timezone=self.config.email.calendar.timezone,
+        )
+
+    @cached_property
     def notifier(self) -> Dispatcher:
         import httpx
 
+        channels = self.config.notifications.channels
+        if self.telegram is not None:  # the approvals bot already brings H6 with buttons
+            channels = tuple(c for c in channels if c != "telegram")
         return build_dispatcher(
-            self.config.notifications.channels,
+            channels,
             telegram_token=self.settings.telegram_bot_token,
             telegram_chat_id=self.config.notifications.telegram_chat_id,
             webhook_url=self.settings.jobpilot_notify_webhook_url,
@@ -262,6 +285,41 @@ class AppContext:
             mail=self.mail,
             harness_for=lambda registry: self._harness_with(REPLY, registry),
             resume_dir=self.resume_dir,
+        )
+
+    @cached_property
+    def autopilot(self) -> Autopilot:
+        from jobpilot.agents.portal.settings import PortalSettings
+        from jobpilot.agents.search.schema import Recency, RecencyPreset
+        from jobpilot.portals.registry import KNOWN, resolve
+
+        def enabled_portals() -> list[str]:
+            with session_scope(self.sessions) as session:
+                return sorted(PortalSettings(session, self.config.portals).enabled())
+
+        def search(sources: list[str], recency: str) -> dict[str, Any]:
+            enabled = set(enabled_portals())
+            adapters = []
+            for source in sources:
+                adapter = resolve(source, self.gateway)
+                if adapter.name in KNOWN and adapter.name not in enabled:
+                    continue  # terms not accepted for that portal
+                adapters.append(adapter)
+            try:
+                report = self.search_agent().run(adapters, Recency(preset=RecencyPreset(recency)))
+            finally:
+                self.tracer.flush()
+            return vars(report)
+
+        return Autopilot(
+            sessions=self.sessions,
+            kill_switch=self.kill_switch,
+            timezone=self.config.email.calendar.timezone,
+            enabled_portals=enabled_portals,
+            search=search,
+            start_review=lambda: self.workflows.start("apply")[0],
+            poll_mail=lambda: self.email_monitor.poll(),
+            has_mailbox=lambda: self.mail.status() is not None,
         )
 
     def otp_source(self) -> EmailOtpSource:

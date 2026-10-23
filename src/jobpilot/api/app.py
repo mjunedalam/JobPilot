@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from jobpilot.api.envelope import fail
 from jobpilot.api.routes import (
     answers,
+    autopilot,
     events,
     jobs,
     llm,
@@ -29,7 +30,7 @@ from jobpilot.api.routes import (
 )
 from jobpilot.core.context import AppContext
 from jobpilot.core.killswitch import KillSwitchEngaged
-from jobpilot.core.scheduler import build_scheduler
+from jobpilot.core.scheduler import build_scheduler, schedule_autopilot
 
 log = logging.getLogger(__name__)
 API_PREFIX = "/api/v1"
@@ -43,7 +44,7 @@ def create_app(
     schedule: bool = True,
 ) -> FastAPI:
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if recover_workflows:
             resumed = ctx.workflows.recover()  # continue runs interrupted by a restart
             if resumed:
@@ -56,8 +57,15 @@ def create_app(
                 kill_switch=ctx.kill_switch,
                 interval_minutes=ctx.config.email.poll_interval_minutes,
             )
+            schedule_autopilot(scheduler, ctx.autopilot)
             scheduler.start()
+        app.state.scheduler = scheduler
+        telegram = ctx.telegram if schedule else None
+        if telegram is not None:
+            telegram.start()
         yield
+        if telegram is not None:
+            telegram.stop()
         if scheduler is not None:
             scheduler.shutdown(wait=False)
         if "workflows" in ctx.__dict__:
@@ -73,7 +81,18 @@ def create_app(
         redoc_url=None,
     )
     app.state.ctx = ctx
-    for module in (system, profile, answers, llm, jobs, portals, workflows, mail, events):
+    for module in (
+        system,
+        profile,
+        answers,
+        llm,
+        jobs,
+        portals,
+        workflows,
+        mail,
+        events,
+        autopilot,
+    ):
         app.include_router(module.router, prefix=API_PREFIX)
     _register_error_handlers(app)
 

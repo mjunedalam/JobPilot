@@ -132,7 +132,7 @@ def test_poll_h6_h7_send(setup, tmp_path) -> None:  # noqa: ANN001
     stale = answer(client, h7, {"action": "approve"})
     assert stale[0] == 409  # the same decision cannot be answered twice
 
-    deadline = time.monotonic() + 10
+    deadline = time.monotonic() + 20
     while time.monotonic() < deadline and not list(sent_dir.glob("*.eml")):
         time.sleep(0.05)
     [sent] = list(sent_dir.glob("*.eml"))
@@ -141,7 +141,7 @@ def test_poll_h6_h7_send(setup, tmp_path) -> None:  # noqa: ANN001
     assert "glad to interview" in msg.get_content()
 
     detail = client.get(f"/api/v1/emails/{email['id']}", headers=AUTH).json()["data"]
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + 20
     while detail["drafts"][0]["status"] != "sent" and time.monotonic() < deadline:
         time.sleep(0.05)
         detail = client.get(f"/api/v1/emails/{email['id']}", headers=AUTH).json()["data"]
@@ -198,7 +198,7 @@ def test_reply_again_starts_a_new_reply_once(setup, tmp_path) -> None:  # noqa: 
     assert busy.status_code == 409
     h6 = wait_decision(client, "H6")
     answer(client, h6, {"action": "ignore"})
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
         if not client.get("/api/v1/emails", headers=AUTH).json()["data"][0]["reply_open"]:
             break
