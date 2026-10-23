@@ -470,3 +470,78 @@ export function useReplyAgain() {
     onSettled: () => invalidate(mailKeys.allEmails, flowKeys.decisions, flowKeys.workflows),
   });
 }
+
+// ---- Mission control: autopilot, activity, notifications ------------------------------
+
+export type Autopilot = Schemas["AutopilotOut"];
+export type AutopilotSettings = Schemas["AutopilotSettings"];
+export type Notifications = Schemas["NotificationsOut"];
+export interface ActivityItem {
+  id: number;
+  ts: number | null;
+  actor: string;
+  action: string;
+  checkpoint: string | null;
+  entity_type: string;
+  entity_id: string;
+  text: string;
+}
+
+export const opsKeys = {
+  autopilot: ["autopilot"] as const,
+  activity: ["activity"] as const,
+  notifications: ["notifications"] as const,
+};
+
+export const useAutopilot = () =>
+  useQuery({ queryKey: opsKeys.autopilot, queryFn: async () => unwrap(await api.GET("/api/v1/autopilot")), refetchInterval: 60_000 });
+
+export function useSaveAutopilot() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: AutopilotSettings) => unwrap(await api.PUT("/api/v1/autopilot", { body })),
+    onSuccess: (data) => client.setQueryData(opsKeys.autopilot, data),
+  });
+}
+
+export function useRunAutopilot() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => unwrap(await api.POST("/api/v1/autopilot/run")),
+    onSuccess: (data) => client.setQueryData(opsKeys.autopilot, data),
+  });
+}
+
+export const useActivity = () =>
+  useQuery({
+    queryKey: opsKeys.activity,
+    queryFn: async () => unwrap(await api.GET("/api/v1/activity", { params: { query: { limit: 40 } } })) as unknown as ActivityItem[],
+    refetchInterval: 60_000,
+  });
+
+export const useNotifications = () =>
+  useQuery({ queryKey: opsKeys.notifications, queryFn: async () => unwrap(await api.GET("/api/v1/notifications")) });
+
+export function useTelegramLinkStart() {
+  return useMutation({ mutationFn: async () => unwrap(await api.POST("/api/v1/notifications/telegram/link/start")) });
+}
+
+export function useTelegramLink() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => unwrap(await api.POST("/api/v1/notifications/telegram/link", { body: { code } })),
+    onSuccess: (data) => client.setQueryData(opsKeys.notifications, data),
+  });
+}
+
+export function useTelegramTest() {
+  return useMutation({ mutationFn: async () => unwrap(await api.POST("/api/v1/notifications/telegram/test")) });
+}
+
+export function useTelegramUnlink() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => unwrap(await api.DELETE("/api/v1/notifications/telegram")),
+    onSuccess: (data) => client.setQueryData(opsKeys.notifications, data),
+  });
+}

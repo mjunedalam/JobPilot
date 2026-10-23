@@ -66,6 +66,31 @@ ACTIONS = {
 }
 
 
+# Tool calls worth a feed line, in plain words; the rest (each field filled, each click) are
+# too fine-grained for a feed and stay in the audit log.
+TOOLS = {
+    "notify": "notified you",
+    "mail.send": "sent your approved reply",
+    "apply.submit": "submitted the approved application",
+    "apply.open": "opened a job posting",
+    "portal.login": "signed in to a portal",
+}
+QUIET_TOOLS = ("apply.fill", "apply.click", "apply.proof")
+TASKS = {
+    "poll": "checking the inbox",
+    "search": "a job search",
+    "rank_jobs": "ranking jobs",
+    "import_resume": "reading your CV",
+    "draft_reply": "drafting a reply",
+    "send_reply": "sending a reply",
+    "apply": "an application attempt",
+}
+
+
+def is_noise(action: str) -> bool:
+    return action.startswith("tool:") and action.split(":", 1)[1] in QUIET_TOOLS
+
+
 def describe(actor: str, action: str, checkpoint: str | None, entity_id: str,
              payload: dict[str, Any] | None = None) -> str:  # fmt: skip
     payload = payload or {}
@@ -77,11 +102,12 @@ def describe(actor: str, action: str, checkpoint: str | None, entity_id: str,
     if (fn := ACTIONS.get(action)) is not None:
         return fn(payload)
     who = AGENT_NAMES.get(actor, actor.replace("_", " ").title())
+    task = str(payload.get("task", ""))
     if action == "run_completed":
-        task = str(payload.get("task", "")).replace("_", " ")
-        return f"{who} finished {task}".strip()
+        return f"{who} finished {TASKS.get(task, task.replace('_', ' '))}".strip()
     if action == "run_failed":
-        return f"{who} stopped: {str(payload.get('task', '')).replace('_', ' ')} failed"
+        return f"{who} stopped while {TASKS.get(task, task.replace('_', ' '))}"
     if action.startswith("tool:"):
-        return f"{who} used {action.split(':', 1)[1]}"
+        tool = action.split(":", 1)[1]
+        return f"{who} {TOOLS.get(tool, 'used ' + tool)}"
     return f"{who}: {action.replace('_', ' ')}"

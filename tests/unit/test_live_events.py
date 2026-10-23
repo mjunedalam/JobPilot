@@ -48,7 +48,7 @@ def test_audit_entries_are_published_without_content(session) -> None:  # noqa: 
 def test_describe_falls_back_sensibly() -> None:
     assert (
         describe("search_agent", "run_completed", None, "", {"task": "search"})
-        == "Job Search finished search"
+        == "Job Search finished a job search"
     )
     assert (
         describe("email_monitor", "email_stored", None, "3", {"category": "interview_invite"})

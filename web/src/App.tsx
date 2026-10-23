@@ -6,6 +6,7 @@ import { Answers } from "./pages/Answers";
 import { Approvals } from "./pages/Approvals";
 import { FlightDeck } from "./pages/FlightDeck";
 import { Inbox } from "./pages/Inbox";
+import { MissionControl } from "./pages/MissionControl";
 import { Jobs } from "./pages/Jobs";
 import { Models } from "./pages/Models";
 import { Portals } from "./pages/Portals";
@@ -17,7 +18,8 @@ const router = createBrowserRouter([
     path: "/",
     element: <Shell />,
     children: [
-      { index: true, element: <FlightDeck /> },
+      { index: true, element: <MissionControl /> },
+      { path: "setup", element: <FlightDeck /> },
       { path: "jobs", element: <Jobs /> },
       { path: "approvals", element: <Approvals /> },
       { path: "inbox", element: <Inbox /> },
@@ -26,7 +28,7 @@ const router = createBrowserRouter([
       { path: "answers", element: <Answers /> },
       { path: "models", element: <Models /> },
       { path: "system", element: <System /> },
-      { path: "*", element: <FlightDeck /> },
+      { path: "*", element: <MissionControl /> },
     ],
   },
 ]);

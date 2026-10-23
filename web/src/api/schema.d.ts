@@ -812,6 +812,172 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Events
+         * @description text/event-stream of audit, workflow, agent, tool, llm and import events.
+         */
+        get: operations["events_api_v1_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity
+         * @description The latest audit entries as plain-language lines (the live feed's first page).
+         */
+        get: operations["activity_api_v1_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/autopilot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Autopilot */
+        get: operations["get_autopilot_api_v1_autopilot_get"];
+        /** Set Autopilot */
+        put: operations["set_autopilot_api_v1_autopilot_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/autopilot/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Now
+         * @description Run once now, in the background; follow it in the live feed.
+         */
+        post: operations["run_now_api_v1_autopilot_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notifications */
+        get: operations["get_notifications_api_v1_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/telegram/link/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link Start
+         * @description A one-time code. Open the link (or send `/start <code>` to the bot) from your phone.
+         */
+        post: operations["link_start_api_v1_notifications_telegram_link_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/telegram/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link Finish */
+        post: operations["link_finish_api_v1_notifications_telegram_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/telegram/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Message */
+        post: operations["test_message_api_v1_notifications_telegram_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/telegram": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unlink */
+        delete: operations["unlink_api_v1_notifications_telegram_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -868,6 +1034,47 @@ export interface components {
             answers_given: {
                 [key: string]: unknown;
             };
+        };
+        /** AutopilotOut */
+        AutopilotOut: {
+            settings: components["schemas"]["AutopilotSettings"];
+            /** Timezone */
+            timezone: string;
+            /** Next Run */
+            next_run: string | null;
+            /** Last Run */
+            last_run: {
+                [key: string]: unknown;
+            } | null;
+            /** Running */
+            running: boolean;
+        };
+        /** AutopilotSettings */
+        AutopilotSettings: {
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Time
+             * @default 09:00
+             */
+            time: string;
+            /** Days */
+            days?: number[];
+            /**
+             * Recency
+             * @default 24h
+             */
+            recency: string;
+            /** Sources */
+            sources?: string[];
+            /**
+             * Check Mail
+             * @default true
+             */
+            check_mail: boolean;
         };
         /** Body_import_resume_api_v1_profile_import_post */
         Body_import_resume_api_v1_profile_import_post: {
@@ -1136,6 +1343,17 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[AutopilotOut] */
+        Envelope_AutopilotOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["AutopilotOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[CandidateProfile] */
         Envelope_CandidateProfile_: {
             /**
@@ -1246,6 +1464,17 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[LinkStartOut] */
+        Envelope_LinkStartOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["LinkStartOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** Envelope[MailStatusOut] */
         Envelope_MailStatusOut_: {
             /**
@@ -1265,6 +1494,17 @@ export interface components {
              */
             success: boolean;
             data?: components["schemas"]["ModelListOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[NotificationsOut] */
+        Envelope_NotificationsOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["NotificationsOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -1523,6 +1763,20 @@ export interface components {
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
+        /** Envelope[list[dict]] */
+        Envelope_list_dict__: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            /** Data */
+            data?: {
+                [key: string]: unknown;
+            }[] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
         /** ErrorBody */
         ErrorBody: {
             /** Code */
@@ -1706,6 +1960,20 @@ export interface components {
             /** Vault Ready */
             vault_ready: boolean;
         };
+        /** LinkIn */
+        LinkIn: {
+            /** Code */
+            code: string;
+        };
+        /** LinkStartOut */
+        LinkStartOut: {
+            /** Code */
+            code: string;
+            /** Bot Username */
+            bot_username: string;
+            /** Deep Link */
+            deep_link: string;
+        };
         /** LinkedApplicationOut */
         LinkedApplicationOut: {
             /** Id */
@@ -1828,6 +2096,14 @@ export interface components {
              * @default
              */
             reason: string;
+        };
+        /** NotificationsOut */
+        NotificationsOut: {
+            telegram: components["schemas"]["TelegramOut"];
+            /** Quiet Hours */
+            quiet_hours: string;
+            /** Channels */
+            channels: string[];
         };
         /** PollOut */
         PollOut: {
@@ -2190,6 +2466,17 @@ export interface components {
              * @default stopped via API
              */
             reason: string;
+        };
+        /** TelegramOut */
+        TelegramOut: {
+            /** Configured */
+            configured: boolean;
+            /** Approvals */
+            approvals: boolean;
+            /** Linked */
+            linked: boolean;
+            /** Chat Hint */
+            chat_hint: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -3612,6 +3899,252 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_ResumeOut__"];
+                };
+            };
+        };
+    };
+    events_api_v1_events_get: {
+        parameters: {
+            query?: {
+                since?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activity_api_v1_activity_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_dict__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_autopilot_api_v1_autopilot_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_AutopilotOut_"];
+                };
+            };
+        };
+    };
+    set_autopilot_api_v1_autopilot_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutopilotSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_AutopilotOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_now_api_v1_autopilot_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_AutopilotOut_"];
+                };
+            };
+        };
+    };
+    get_notifications_api_v1_notifications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_NotificationsOut_"];
+                };
+            };
+        };
+    };
+    link_start_api_v1_notifications_telegram_link_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_LinkStartOut_"];
+                };
+            };
+        };
+    };
+    link_finish_api_v1_notifications_telegram_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_NotificationsOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_message_api_v1_notifications_telegram_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_NotificationsOut_"];
+                };
+            };
+        };
+    };
+    unlink_api_v1_notifications_telegram_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_NotificationsOut_"];
                 };
             };
         };

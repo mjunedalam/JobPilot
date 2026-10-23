@@ -15,6 +15,7 @@ from sqlalchemy import select
 
 from jobpilot.api.deps import AUTH, DbSession, RequestId
 from jobpilot.api.envelope import Envelope, ok
+from jobpilot.core.activity import is_noise
 from jobpilot.core.audit import feed_item
 from jobpilot.core.events import Event, bus
 from jobpilot.core.models import AuditLog
@@ -63,6 +64,6 @@ def activity(
     session: DbSession, rid: RequestId, limit: int = Query(40, ge=1, le=200)
 ) -> Envelope[list[dict]]:
     """The latest audit entries as plain-language lines (the live feed's first page)."""
-    rows = session.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(limit))
-    data = [feed_item(r) for r in rows]
+    rows = session.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(limit * 3))
+    data = [feed_item(r) for r in rows if not is_noise(r.action)][:limit]
     return ok(data, rid, total=len(data))

@@ -1,5 +1,7 @@
 import {
+  Activity,
   BookOpenText,
+  ClipboardCheck,
   Cpu,
   Gauge,
   Inbox,
@@ -15,7 +17,10 @@ import {
   BarChart3,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useDecisions } from "../api/queries";
+import { updateBadge } from "../lib/notify";
+import { useLiveStatus } from "./live/LiveProvider";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useTheme } from "../lib/theme";
 import { Annunciator } from "./Annunciator";
@@ -24,15 +29,23 @@ interface NavItem {
   to: string;
   label: string;
   icon: ReactNode;
+  badge?: "decisions";
+}
+
+function DecisionsBadge() {
+  const count = useDecisions(false).data?.length ?? 0;
+  useEffect(() => updateBadge(count), [count]);
+  return count > 0 ? <span className="rail-badge" aria-label={`${count} waiting`}>{count}</span> : null;
 }
 
 const SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: "Cockpit",
     items: [
-      { to: "/", label: "Flight deck", icon: <Gauge size={17} /> },
+      { to: "/", label: "Mission control", icon: <Gauge size={17} /> },
+      { to: "/approvals", label: "Decisions", icon: <ListChecks size={17} />, badge: "decisions" },
+      { to: "/live", label: "Live ops", icon: <Activity size={17} /> },
       { to: "/jobs", label: "Jobs", icon: <Search size={17} /> },
-      { to: "/approvals", label: "Approvals", icon: <ListChecks size={17} /> },
       { to: "/inbox", label: "Inbox", icon: <Inbox size={17} /> },
     ],
   },
@@ -41,6 +54,7 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { to: "/profile", label: "Profile", icon: <UserRound size={17} /> },
       { to: "/answers", label: "Answer bank", icon: <BookOpenText size={17} /> },
+      { to: "/setup", label: "Pre-flight", icon: <ClipboardCheck size={17} /> },
     ],
   },
   {
@@ -76,7 +90,7 @@ export function Shell() {
           </span>
           <span>
             <span className="brand-name">JobPilot</span>
-            <span className="brand-sub">flight deck</span>
+            <span className="brand-sub">mission control</span>
           </span>
           <button className="rail-close" onClick={() => setOpen(false)} aria-label="Close menu">
             <X size={18} />
@@ -96,6 +110,7 @@ export function Shell() {
                 >
                   {item.icon}
                   {item.label}
+                  {item.badge === "decisions" && <DecisionsBadge />}
                 </NavLink>
               ))}
             </div>
@@ -122,11 +137,22 @@ export function Shell() {
             <Menu size={20} />
           </button>
           <Annunciator />
+          <LiveLamp />
         </div>
         <main className="content" key={location.pathname}>
           <Outlet />
         </main>
       </div>
     </div>
+  );
+}
+
+function LiveLamp() {
+  const status = useLiveStatus();
+  return (
+    <span className={`mc-live mc-live-${status} topbar-live`} title="Live updates from the agents">
+      <span aria-hidden className="mc-live-dot" />
+      {status === "live" ? "live" : status}
+    </span>
   );
 }
