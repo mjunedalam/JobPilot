@@ -61,7 +61,7 @@ export function H6Email({ decision }: { decision: Decision }) {
                   onChange={(e) => setInstruction(e.target.value)} />
       </Field>
       <div className="decision-actions">
-        <Button variant="ghost" busy={answer.isPending}
+        <Button data-hotkey="reject" variant="ghost" busy={answer.isPending}
                 onClick={() => answer.mutate({ decision, answer: { action: "ignore" } })}>
           <EyeOff size={15} /> Ignore
         </Button>
@@ -70,7 +70,7 @@ export function H6Email({ decision }: { decision: Decision }) {
           <Check size={15} /> Mark done
         </Button>
         <span className="spacer" />
-        <Button type="submit" variant="primary" busy={answer.isPending}>
+        <Button data-hotkey="approve" type="submit" variant="primary" busy={answer.isPending}>
           <PenLine size={15} /> Draft a reply
         </Button>
       </div>

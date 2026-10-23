@@ -38,6 +38,8 @@ export function LiveProvider({ children }: { children: ReactNode }) {
           updateBadge(list.length);
           const latest = list[list.length - 1] as { checkpoint?: string; payload?: Record<string, unknown> } | undefined;
           if (latest) notifyDecision(latest.checkpoint ?? "", latest.payload ?? {});
+        }).catch(() => {
+          /* superseded by a newer refresh (react-query cancels it): the next event retries */
         });
       }
     });

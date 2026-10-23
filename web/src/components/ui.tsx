@@ -118,7 +118,7 @@ export function Lamp({ tone, label }: { tone: Tone; label: string }) {
 }
 
 export function ErrorNote({ error }: { error: unknown }) {
-  if (!error) return null;
+  if (!error || (error instanceof Error && error.name === "Cancelled")) return null; // undone on purpose
   const message = error instanceof Error ? error.message : String(error);
   return (
     <p className="error-note" role="alert">

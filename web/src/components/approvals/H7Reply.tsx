@@ -142,7 +142,7 @@ export function H7Reply({ decision }: { decision: Decision }) {
 
       {mode !== "edit" && (
         <div className="decision-actions">
-          <Button variant="danger" busy={answer.isPending}
+          <Button data-hotkey="reject" variant="danger" busy={answer.isPending}
                   onClick={() => window.confirm("Discard this reply? Nothing will be sent.")
                     && answer.mutate({ decision, answer: { action: "discard" } })}>
             <Trash2 size={15} /> Discard
@@ -159,9 +159,9 @@ export function H7Reply({ decision }: { decision: Decision }) {
           ) : (
             <>
               <Button onClick={() => setMode("regenerate")}><RefreshCw size={15} /> Regenerate</Button>
-              <Button onClick={() => setMode("edit")}><Pencil size={15} /> Edit</Button>
+              <Button data-hotkey="edit" onClick={() => setMode("edit")}><Pencil size={15} /> Edit</Button>
               {allowed.includes("approve") && (
-                <Button variant="primary" busy={answer.isPending}
+                <Button data-hotkey="approve" variant="primary" busy={answer.isPending}
                         onClick={() => answer.mutate({ decision, answer: { action: "approve" } })}>
                   <Send size={15} /> Approve &amp; send
                 </Button>

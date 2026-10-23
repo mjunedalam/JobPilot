@@ -196,3 +196,18 @@ def test_proof_endpoint_refuses_paths_outside_proof_dir(setup, tmp_path) -> None
         s.add(Application(job_id=job_id, portal="x", proof_path=str(secret)))
     app_id = client.get("/api/v1/applications", headers=AUTH).json()["data"][0]["id"]
     assert client.get(f"/api/v1/applications/{app_id}/proof", headers=AUTH).status_code == 404
+
+
+def test_job_journey_lists_found_decisions_and_application(setup) -> None:  # noqa: ANN001
+    client, ctx, _ = setup
+    job_id = client.get("/api/v1/jobs", headers=AUTH).json()["data"][0]["id"]
+    with session_scope(ctx.sessions) as s:
+        from jobpilot.core.audit import log_decision
+        from jobpilot.core.status import Checkpoint
+
+        log_decision(s, Checkpoint.H3_JOB_APPROVAL, "approve", approved_content={"job_id": job_id},
+                     entity_type="job", entity_id=job_id)  # fmt: skip
+    steps = client.get(f"/api/v1/jobs/{job_id}/journey", headers=AUTH).json()["data"]["steps"]
+    assert steps[0]["title"] == "Found"
+    assert steps[1] == {**steps[1], "title": f"You approved job #{job_id}", "tone": "you"}
+    assert client.get("/api/v1/jobs/99999/journey", headers=AUTH).status_code == 404

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { undoLabel, undoStore } from "../lib/undo";
 import { api, getToken, unwrap, uploadResume, type Schemas } from "./client";
 
 export type Role = Schemas["ModelRole"];
@@ -366,11 +367,15 @@ export function useStartApply() {
 export function useAnswerDecision() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async ({ decision, answer }: { decision: Decision; answer: Record<string, unknown> }) =>
-      unwrap(await api.POST("/api/v1/decisions/{thread_id}", {
+    mutationFn: async ({ decision, answer }: { decision: Decision; answer: Record<string, unknown> }) => {
+      // Submitting, applying or sending waits a few seconds first, so it can be undone.
+      const label = undoLabel(decision.checkpoint, answer);
+      if (label) await undoStore.hold(label);
+      return unwrap(await api.POST("/api/v1/decisions/{thread_id}", {
         params: { path: { thread_id: decision.thread_id } },
         body: { interrupt_id: decision.interrupt_id, answer },
-      })),
+      }));
+    },
     onSettled: () => invalidate(flowKeys.decisions, flowKeys.workflows, flowKeys.applications, jobKeys.jobs),
   });
 }
@@ -545,3 +550,12 @@ export function useTelegramUnlink() {
     onSuccess: (data) => client.setQueryData(opsKeys.notifications, data),
   });
 }
+
+export type Journey = Schemas["JourneyOut"];
+
+export const useJourney = (jobId: number | null) =>
+  useQuery({
+    queryKey: ["journey", jobId],
+    enabled: jobId != null,
+    queryFn: async () => unwrap(await api.GET("/api/v1/jobs/{job_id}/journey", { params: { path: { job_id: jobId as number } } })),
+  });

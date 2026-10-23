@@ -978,6 +978,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/journey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Journey */
+        get: operations["journey_api_v1_jobs__job_id__journey_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1439,6 +1456,17 @@ export interface components {
              */
             success: boolean;
             data?: components["schemas"]["JobOut"] | null;
+            error?: components["schemas"]["ErrorBody"] | null;
+            meta?: components["schemas"]["Meta"];
+        };
+        /** Envelope[JourneyOut] */
+        Envelope_JourneyOut_: {
+            /**
+             * Success
+             * @default true
+             */
+            success: boolean;
+            data?: components["schemas"]["JourneyOut"] | null;
             error?: components["schemas"]["ErrorBody"] | null;
             meta?: components["schemas"]["Meta"];
         };
@@ -1945,6 +1973,39 @@ export interface components {
          * @enum {string}
          */
         JobStatus: "found" | "approved" | "applying" | "applied" | "failed" | "skipped" | "viewed" | "shortlisted" | "interview" | "offer" | "rejected";
+        /** JourneyOut */
+        JourneyOut: {
+            /** Job Id */
+            job_id: number;
+            /** Title */
+            title: string;
+            /** Company */
+            company: string;
+            /** Status */
+            status: string;
+            /** Steps */
+            steps: components["schemas"]["JourneyStep"][];
+        };
+        /** JourneyStep */
+        JourneyStep: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Title */
+            title: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Tone
+             * @default neutral
+             */
+            tone: string;
+        };
         /** KillSwitchOut */
         KillSwitchOut: {
             /** Engaged */
@@ -4145,6 +4206,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_NotificationsOut_"];
+                };
+            };
+        };
+    };
+    journey_api_v1_jobs__job_id__journey_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_JourneyOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

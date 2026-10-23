@@ -97,13 +97,13 @@ export function H3Review({ decision }: { decision: Decision }) {
       <div className="decision-actions">
         <span className="mono muted">{picked.length ? `Selection: ${selection}` : "Nothing selected"}</span>
         <span className="spacer" />
-        <Button variant="ghost" busy={answer.isPending} onClick={() => answer.mutate({ decision, answer: { action: "reject" } })}>
+        <Button data-hotkey="reject" variant="ghost" busy={answer.isPending} onClick={() => answer.mutate({ decision, answer: { action: "reject" } })}>
           Reject all
         </Button>
         <Button busy={answer.isPending} onClick={() => answer.mutate({ decision, answer: { action: "approve", selection: "all" } })}>
           Approve all {jobs.length}
         </Button>
-        <Button variant="primary" disabled={!picked.length} busy={answer.isPending}
+        <Button data-hotkey="approve" variant="primary" disabled={!picked.length} busy={answer.isPending}
                 onClick={() => answer.mutate({ decision, answer: { action: "approve", selection } })}>
           Approve {picked.length || ""}
         </Button>

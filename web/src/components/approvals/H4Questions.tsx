@@ -61,11 +61,11 @@ export function H4Questions({ decision }: { decision: Decision }) {
         </div>
       ))}
       <div className="decision-actions">
-        <Button variant="ghost" busy={answer.isPending} onClick={() => answer.mutate({ decision, answer: { action: "skip" } })}>
+        <Button data-hotkey="reject" variant="ghost" busy={answer.isPending} onClick={() => answer.mutate({ decision, answer: { action: "skip" } })}>
           Skip this job
         </Button>
         <span className="spacer" />
-        <Button variant="primary" type="submit" disabled={!complete} busy={answer.isPending}>Continue</Button>
+        <Button data-hotkey="approve" variant="primary" type="submit" disabled={!complete} busy={answer.isPending}>Continue</Button>
       </div>
       <ErrorNote error={answer.error} />
     </form>

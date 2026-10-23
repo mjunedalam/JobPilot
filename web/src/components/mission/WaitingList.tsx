@@ -1,23 +1,7 @@
 import { Link } from "react-router";
-import { useDecisions, type Decision } from "../../api/queries";
-import { describeDecision } from "../../lib/notify";
+import { useDecisions } from "../../api/queries";
+import { decisionMeta as meta, describeDecision } from "../../lib/notify";
 import { Empty } from "../ui";
-
-function meta(d: Decision): string {
-  const p = d.payload as Record<string, unknown>;
-  const job = p.job as { title?: string; company?: string } | undefined;
-  const jobs = p.jobs as { title: string; company: string; match_score: number | null }[] | undefined;
-  const email = p.email as { sender?: string; subject?: string } | undefined;
-  const draft = p.draft as { to?: string[] } | null | undefined;
-  if (d.checkpoint === "H3" && jobs?.length) {
-    const best = [...jobs].sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))[0];
-    return `${jobs.length} jobs · best: ${best?.title} at ${best?.company} (${best?.match_score ?? "–"}%)`;
-  }
-  if (d.checkpoint === "H7" && draft?.to) return `To ${draft.to.join(", ")}`;
-  if (email?.subject) return `${email.sender ?? ""} · ${email.subject}`;
-  if (job?.title) return `${job.title}${job.company ? ` at ${job.company}` : ""}`;
-  return "";
-}
 
 export function WaitingList() {
   const decisions = useDecisions(false).data ?? [];

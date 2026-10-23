@@ -76,3 +76,21 @@ export function updateBadge(count: number) {
   const base = document.title.replace(/^\(\d+\)\s*/, "") || TITLE;
   document.title = count > 0 ? `(${count}) ${base}` : base;
 }
+
+/** One line that tells decisions apart: who wrote, which job, how many. */
+export function decisionMeta(d: { checkpoint: string; payload: Record<string, unknown> }): string {
+  const p = d.payload;
+  const job = p.job as { title?: string; company?: string } | undefined;
+  const jobs = p.jobs as { title: string; company: string; match_score: number | null }[] | undefined;
+  const email = p.email as { sender?: string; subject?: string } | undefined;
+  const draft = p.draft as { to?: string[] } | null | undefined;
+  if (d.checkpoint === "H3" && jobs?.length) {
+    const best = [...jobs].sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))[0];
+    return `${jobs.length} jobs · best: ${best?.title} at ${best?.company} (${best?.match_score ?? "–"}%)`;
+  }
+  if (d.checkpoint === "H7" && draft?.to) return `To ${draft.to.join(", ")}`;
+  if (email?.subject) return `${email.sender ?? ""} · ${email.subject}`;
+  if (job?.title) return `${job.title}${job.company ? ` at ${job.company}` : ""}`;
+  return "";
+}
+

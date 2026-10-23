@@ -1,23 +1,18 @@
-import { CirclePlay, Image as ImageIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
-import {
-  fetchProof,
-  flowKeys,
-  useApplications,
-  useDecisions,
-  useStartApply,
-  useWorkflows,
-  type ApplicationRow,
-  type Decision,
-} from "../api/queries";
+import { CirclePlay, Focus } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
+import { useApplications, useDecisions, useStartApply, useWorkflows, type Decision } from "../api/queries";
+import { AppRow } from "../components/approvals/AppRow";
+import { IfYouApprove, JourneyPanel, useDecisionJobId } from "../components/approvals/DecisionContext";
 import { H3Review } from "../components/approvals/H3Review";
 import { H4Questions } from "../components/approvals/H4Questions";
 import { H5Preview } from "../components/approvals/H5Preview";
 import { H6Email } from "../components/approvals/H6Email";
 import { H7Reply } from "../components/approvals/H7Reply";
-import { Badge, Button, Empty, ErrorNote, Lamp, Panel } from "../components/ui";
-import { relativeTime } from "../lib/format";
+import { UndoToast } from "../components/approvals/UndoToast";
+import { Button, Empty, ErrorNote } from "../components/ui";
+import { decisionMeta, describeDecision } from "../lib/notify";
+import { undoStore } from "../lib/undo";
 
 const TITLES: Record<string, { eyebrow: string; title: string }> = {
   H3: { eyebrow: "H3 · job approval", title: "Which jobs should JobPilot apply to?" },
@@ -27,104 +22,132 @@ const TITLES: Record<string, { eyebrow: string; title: string }> = {
   H7: { eyebrow: "H7 · reply approval", title: "Approve the reply before it is sent" },
 };
 
-const STATUS_TONE: Record<string, "go" | "amber" | "stop" | "sky" | "neutral"> = {
-  applied: "go", applying: "sky", failed: "stop", skipped: "neutral", viewed: "sky",
-  shortlisted: "sky", interview: "amber", offer: "go", rejected: "stop",
-};
-
-function DecisionCard({ decision }: { decision: Decision }) {
-  const meta = TITLES[decision.checkpoint] ?? { eyebrow: decision.checkpoint, title: "Decision" };
-  return (
-    <Panel eyebrow={meta.eyebrow} title={meta.title} className="decision">
-      {decision.checkpoint === "H3" && <H3Review key={decision.interrupt_id} decision={decision} />}
-      {decision.checkpoint === "H4" && <H4Questions key={decision.interrupt_id} decision={decision} />}
-      {decision.checkpoint === "H5" && <H5Preview key={decision.interrupt_id} decision={decision} />}
-      {decision.checkpoint === "H6" && <H6Email key={decision.interrupt_id} decision={decision} />}
-      {decision.checkpoint === "H7" && <H7Reply key={decision.interrupt_id} decision={decision} />}
-    </Panel>
-  );
+function DecisionBody({ decision }: { decision: Decision }) {
+  const k = decision.interrupt_id;
+  switch (decision.checkpoint) {
+    case "H3": return <H3Review key={k} decision={decision} />;
+    case "H4": return <H4Questions key={k} decision={decision} />;
+    case "H5": return <H5Preview key={k} decision={decision} />;
+    case "H6": return <H6Email key={k} decision={decision} />;
+    case "H7": return <H7Reply key={k} decision={decision} />;
+    default: return <p className="muted">Open this decision in its own page.</p>;
+  }
 }
 
-function AppRow({ app }: { app: ApplicationRow }) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [error, setError] = useState<unknown>(null);
-  return (
-    <article className="app-row">
-      <div>
-        <h3 className="app-title">{app.title}</h3>
-        <p className="muted">{app.company} · {app.portal} · attempt {app.attempts}
-          {app.submitted_at ? ` · ${relativeTime(app.submitted_at)}` : ""}</p>
-        {app.confirmation_text && <p className="app-confirm">“{app.confirmation_text}”</p>}
-        {app.error && <p className="tone-stop app-error">{app.error}</p>}
-      </div>
-      <div className="app-side">
-        <Badge tone={STATUS_TONE[app.status] ?? "neutral"}>{app.status}</Badge>
-        {app.has_proof && (
-          <Button variant="ghost" aria-expanded={Boolean(src)}
-                  onClick={() => (src ? setSrc(null) : fetchProof(app.id).then(setSrc, setError))}>
-            <ImageIcon size={14} /> {src ? "Hide proof" : "Proof"}
-          </Button>
-        )}
-      </div>
-      <ErrorNote error={error} />
-      {src && <img className="proof" src={src} alt={`Screenshot of the submitted application for ${app.title}`} />}
-    </article>
-  );
+/** A, R, E press the current decision's buttons; J/K move through the queue; U undoes. */
+function useHotkeys(move: (delta: number) => void) {
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (target && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+      const key = event.key.toLowerCase();
+      const press = (hotkey: string) => {
+        const button = document.querySelector<HTMLButtonElement>(`.dc-current [data-hotkey="${hotkey}"]:not(:disabled)`);
+        if (button) {
+          event.preventDefault();
+          button.click();
+        }
+      };
+      if (key === "j") move(1);
+      else if (key === "k") move(-1);
+      else if (key === "a") press("approve");
+      else if (key === "r") press("reject");
+      else if (key === "e") press("edit");
+      else if (key === "u") undoStore.undo();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [move]);
 }
 
 export function Approvals() {
   const workflows = useWorkflows();
-  const running = (workflows.data ?? []).some((r) => r.status === "running");
   const applyRunning = (workflows.data ?? []).some((r) => r.kind === "apply" && r.status === "running");
-  const decisions = useDecisions(running);
-  const applications = useApplications(running);
-  const client = useQueryClient();
-  const wasRunning = useRef(running);
-  useEffect(() => {
-    // A run can finish between two polls: fetch the final state once when it stops.
-    if (wasRunning.current && !running) {
-      void client.invalidateQueries({ queryKey: flowKeys.applications });
-      void client.invalidateQueries({ queryKey: flowKeys.decisions });
-    }
-    wasRunning.current = running;
-  }, [running, client]);
-  const start = useStartApply();
-  const latest = workflows.data?.find((r) => r.kind === "apply");
+  const decisions = useDecisions(false);
   const pending = decisions.data ?? [];
-  const applyPending = pending.some((d) => d.kind === "apply");
+  const applications = useApplications(applyRunning);
+  const start = useStartApply();
+  const [params, setParams] = useSearchParams();
+  const [focusMode, setFocusMode] = useState(false);
+  const focus = params.get("focus");
+  const current = pending.find((d) => d.interrupt_id === focus) ?? pending[0];
+  const jobId = useDecisionJobId(current);
+
+  const move = useCallback(
+    (delta: number) => {
+      if (!pending.length) return;
+      const i = Math.max(0, pending.findIndex((d) => d.interrupt_id === current?.interrupt_id));
+      const next = pending[(i + delta + pending.length) % pending.length];
+      if (next) setParams({ focus: next.interrupt_id }, { replace: true });
+    },
+    [pending, current, setParams],
+  );
+  useHotkeys(move);
+  const meta = current ? (TITLES[current.checkpoint] ?? { eyebrow: current.checkpoint, title: "Decision" }) : null;
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <p className="eyebrow">Cockpit</p>
-        <h1 className="page-title">Approvals</h1>
-        <p className="page-lede">
-          Everything that acts on your behalf stops here first: which jobs (H3), anything it
-          can't answer confidently (H4), the exact form before it is sent (H5), emails that need
-          you (H6) and every reply before it goes out (H7). Decisions survive restarts.
-        </p>
-      </header>
-
-      <Panel eyebrow="Apply run" title={applyRunning ? "Working…" : applyPending ? "Waiting for you" : "Ready"}
-             actions={<Button variant="primary" busy={start.isPending}
-                              disabled={applyRunning || applyPending}
-                              onClick={() => start.mutate()}><CirclePlay size={16} /> Review found jobs</Button>}>
-        {latest ? (
-          <p className="run-line">
-            <Lamp tone={latest.status === "failed" ? "stop" : latest.status === "done" ? "go" : "amber"}
-                  label={latest.status} />
-            <span className="muted">started {relativeTime(latest.created_at)}</span>
-            {latest.summary?.applied_count != null && <span>· {String(latest.summary.applied_count)} applied</span>}
-            {latest.error && <span className="tone-stop">· {latest.error}</span>}
+    <div className={`page dc ${focusMode ? "dc-focus" : ""}`}>
+      <header className="dc-head">
+        <div>
+          <p className="eyebrow">Cockpit</p>
+          <h1 className="page-title">Decision Center</h1>
+          <p className="muted">
+            {pending.length ? `${pending.length} waiting · also on your phone` : "Nothing waiting"} ·
+            {" "}<kbd>J</kbd>/<kbd>K</kbd> move · <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>E</kbd> edit · <kbd>U</kbd> undo
           </p>
-        ) : (
-          <p className="muted">No runs yet. Search for jobs, then start a review.</p>
-        )}
-        <ErrorNote error={start.error ?? workflows.error} />
-      </Panel>
+        </div>
+        <div className="dc-head-actions">
+          <Button aria-pressed={focusMode} onClick={() => setFocusMode((f) => !f)}><Focus size={15} /> Focus</Button>
+          <Button variant="primary" busy={start.isPending} disabled={applyRunning || pending.some((d) => d.kind === "apply")}
+                  onClick={() => start.mutate()}>
+            <CirclePlay size={16} /> Review found jobs
+          </Button>
+        </div>
+      </header>
+      <ErrorNote error={start.error ?? decisions.error} />
 
-      <ErrorNote error={decisions.error} />
-      {pending.map((d) => <DecisionCard key={d.interrupt_id} decision={d} />)}
+      <div className="dc-layout">
+        {!focusMode && (
+          <nav aria-label="Decisions waiting" className="dc-queue">
+            {pending.map((d) => {
+              const on = d.interrupt_id === current?.interrupt_id;
+              const { title } = describeDecision(d.checkpoint, d.payload as Record<string, unknown>);
+              return (
+                <button key={d.interrupt_id} type="button" aria-current={on || undefined}
+                        className={`dc-q dc-q-${d.checkpoint} ${on ? "dc-q-on" : ""}`}
+                        onClick={() => setParams({ focus: d.interrupt_id }, { replace: true })}>
+                  <span className="mc-tag">{d.checkpoint}</span>
+                  <span className="dc-q-text">
+                    <span className="dc-q-title">{title}</span>
+                    <span className="dc-q-meta">{decisionMeta(d as { checkpoint: string; payload: Record<string, unknown> })}</span>
+                  </span>
+                </button>
+              );
+            })}
+            {pending.length === 0 && <Empty title="All clear">Decisions appear here the moment an agent needs you.</Empty>}
+          </nav>
+        )}
+
+        <main className="dc-main">
+          {current && meta ? (
+            <article className="dc-current panel decision" aria-labelledby="dc-title">
+              <p className="eyebrow">{meta.eyebrow}</p>
+              <h2 id="dc-title" className="panel-title">{meta.title}</h2>
+              <DecisionBody decision={current} />
+              <IfYouApprove checkpoint={current.checkpoint} />
+            </article>
+          ) : (
+            <Empty title="Nothing needs you">When Autopilot or a review finds something, it lands here and on your phone.</Empty>
+          )}
+        </main>
+
+        {!focusMode && (
+          <aside className="dc-side" aria-label="Context">
+            <JourneyPanel jobId={jobId} />
+          </aside>
+        )}
+      </div>
 
       <section className="section" aria-labelledby="apps-title">
         <div className="section-head">
@@ -136,6 +159,7 @@ export function Approvals() {
           {(applications.data ?? []).map((a) => <AppRow key={a.id} app={a} />)}
         </div>
       </section>
+      <UndoToast />
     </div>
   );
 }

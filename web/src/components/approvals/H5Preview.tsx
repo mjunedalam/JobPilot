@@ -38,7 +38,7 @@ export function H5Preview({ decision }: { decision: Decision }) {
         ))}
       </dl>
       <div className="decision-actions">
-        <Button variant="ghost" busy={answer.isPending} onClick={() => answer.mutate({ decision, answer: { action: "skip" } })}>
+        <Button data-hotkey="reject" variant="ghost" busy={answer.isPending} onClick={() => answer.mutate({ decision, answer: { action: "skip" } })}>
           Skip this job
         </Button>
         <span className="spacer" />
@@ -51,8 +51,8 @@ export function H5Preview({ decision }: { decision: Decision }) {
           </>
         ) : (
           <>
-            <Button onClick={() => setEditing({ ...answers })}><Pencil size={15} /> Edit</Button>
-            <Button variant="primary" busy={answer.isPending}
+            <Button data-hotkey="edit" onClick={() => setEditing({ ...answers })}><Pencil size={15} /> Edit</Button>
+            <Button data-hotkey="approve" variant="primary" busy={answer.isPending}
                     onClick={() => answer.mutate({ decision, answer: { action: "submit" } })}>
               <Send size={15} /> Submit application
             </Button>
