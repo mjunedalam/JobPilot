@@ -2029,6 +2029,348 @@
           }
         ]
       }
+    },
+    "/api/v1/events": {
+      "get": {
+        "tags": [
+          "live"
+        ],
+        "summary": "Events",
+        "description": "text/event-stream of audit, workflow, agent, tool, llm and import events.",
+        "operationId": "events_api_v1_events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Since"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activity": {
+      "get": {
+        "tags": [
+          "live"
+        ],
+        "summary": "Activity",
+        "description": "The latest audit entries as plain-language lines (the live feed's first page).",
+        "operationId": "activity_api_v1_activity_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 40,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_dict__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/autopilot": {
+      "get": {
+        "tags": [
+          "autopilot"
+        ],
+        "summary": "Get Autopilot",
+        "operationId": "get_autopilot_api_v1_autopilot_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AutopilotOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "autopilot"
+        ],
+        "summary": "Set Autopilot",
+        "operationId": "set_autopilot_api_v1_autopilot_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutopilotSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AutopilotOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/autopilot/run": {
+      "post": {
+        "tags": [
+          "autopilot"
+        ],
+        "summary": "Run Now",
+        "description": "Run once now, in the background; follow it in the live feed.",
+        "operationId": "run_now_api_v1_autopilot_run_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AutopilotOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Get Notifications",
+        "operationId": "get_notifications_api_v1_notifications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_NotificationsOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/telegram/link/start": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Link Start",
+        "description": "A one-time code. Open the link (or send `/start <code>` to the bot) from your phone.",
+        "operationId": "link_start_api_v1_notifications_telegram_link_start_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LinkStartOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/telegram/link": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Link Finish",
+        "operationId": "link_finish_api_v1_notifications_telegram_link_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_NotificationsOut_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/telegram/test": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Test Message",
+        "operationId": "test_message_api_v1_notifications_telegram_test_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_NotificationsOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/telegram": {
+      "delete": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Unlink",
+        "operationId": "unlink_api_v1_notifications_telegram_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_NotificationsOut_"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -2180,6 +2522,97 @@
           "answers_given"
         ],
         "title": "ApplicationOut"
+      },
+      "AutopilotOut": {
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/AutopilotSettings"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "next_run": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Run"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run"
+          },
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          }
+        },
+        "type": "object",
+        "required": [
+          "settings",
+          "timezone",
+          "next_run",
+          "last_run",
+          "running"
+        ],
+        "title": "AutopilotOut"
+      },
+      "AutopilotSettings": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Time",
+            "default": "09:00"
+          },
+          "days": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "recency": {
+            "type": "string",
+            "pattern": "^(1h|24h|7d|30d)$",
+            "title": "Recency",
+            "default": "24h"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Sources"
+          },
+          "check_mail": {
+            "type": "boolean",
+            "title": "Check Mail",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "AutopilotSettings"
       },
       "Body_import_resume_api_v1_profile_import_post": {
         "properties": {
@@ -2861,6 +3294,40 @@
         "type": "object",
         "title": "Envelope[AnswerOut]"
       },
+      "Envelope_AutopilotOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AutopilotOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[AutopilotOut]"
+      },
       "Envelope_CandidateProfile_": {
         "properties": {
           "success": {
@@ -3201,6 +3668,40 @@
         "type": "object",
         "title": "Envelope[LLMSettingsOut]"
       },
+      "Envelope_LinkStartOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkStartOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[LinkStartOut]"
+      },
       "Envelope_MailStatusOut_": {
         "properties": {
           "success": {
@@ -3268,6 +3769,40 @@
         },
         "type": "object",
         "title": "Envelope[ModelListOut]"
+      },
+      "Envelope_NotificationsOut_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[NotificationsOut]"
       },
       "Envelope_PollOut_": {
         "properties": {
@@ -4069,6 +4604,45 @@
         "type": "object",
         "title": "Envelope[list[WorkflowOut]]"
       },
+      "Envelope_list_dict__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          }
+        },
+        "type": "object",
+        "title": "Envelope[list[dict]]"
+      },
       "ErrorBody": {
         "properties": {
           "code": {
@@ -4632,6 +5206,44 @@
         ],
         "title": "LLMSettingsOut"
       },
+      "LinkIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 6,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "LinkIn"
+      },
+      "LinkStartOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "bot_username": {
+            "type": "string",
+            "title": "Bot Username"
+          },
+          "deep_link": {
+            "type": "string",
+            "title": "Deep Link"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "bot_username",
+          "deep_link"
+        ],
+        "title": "LinkStartOut"
+      },
       "LinkedApplicationOut": {
         "properties": {
           "id": {
@@ -4958,6 +5570,31 @@
           "available"
         ],
         "title": "NotificationChannelOut"
+      },
+      "NotificationsOut": {
+        "properties": {
+          "telegram": {
+            "$ref": "#/components/schemas/TelegramOut"
+          },
+          "quiet_hours": {
+            "type": "string",
+            "title": "Quiet Hours"
+          },
+          "channels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Channels"
+          }
+        },
+        "type": "object",
+        "required": [
+          "telegram",
+          "quiet_hours",
+          "channels"
+        ],
+        "title": "NotificationsOut"
       },
       "PollOut": {
         "properties": {
@@ -5805,6 +6442,34 @@
         },
         "type": "object",
         "title": "StopIn"
+      },
+      "TelegramOut": {
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "approvals": {
+            "type": "boolean",
+            "title": "Approvals"
+          },
+          "linked": {
+            "type": "boolean",
+            "title": "Linked"
+          },
+          "chat_hint": {
+            "type": "string",
+            "title": "Chat Hint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "configured",
+          "approvals",
+          "linked",
+          "chat_hint"
+        ],
+        "title": "TelegramOut"
       },
       "ValidationError": {
         "properties": {

@@ -154,3 +154,27 @@ def test_link_only_a_private_start_with_the_code(sessions) -> None:  # noqa: ANN
         },
     ]
     assert bot.link("JPCODE12") == "77" and bot.chat_id() == "77"
+
+
+def test_one_failed_send_never_causes_resends(sessions) -> None:  # noqa: ANN001
+    bad = PendingDecision("t5", "apply", "i5", {"checkpoint": "H5", "job": {"title": "x"}})
+    bot, tg, _ = make(sessions, [H3, bad, H7])
+    real = tg.__call__
+
+    def flaky(req: httpx.Request) -> httpx.Response:
+        if b"H5" in req.content:
+            return httpx.Response(400, json={"ok": False})
+        return real(req)
+
+    bot._http = httpx.Client(transport=httpx.MockTransport(flaky))
+    bot.sync()
+    bot.sync()
+    texts = [b["text"][:2] for b in tg.sent()]
+    assert sorted(texts) == ["H3", "H7"]  # each sent once; the failing one did not stop the rest
+
+
+def test_anything_too_long_has_no_buttons() -> None:
+    many = {"checkpoint": "H5", "job": {"title": "Engineer", "company": "Acme"},
+            "answers": {f"Question {i}": "a" * 400 for i in range(12)}}  # fmt: skip
+    text, btns = render(PendingDecision("t", "apply", "i", many))
+    assert len(text) < 4096 and btns == []

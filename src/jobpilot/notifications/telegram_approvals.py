@@ -36,6 +36,7 @@ log = logging.getLogger(__name__)
 STATE_KEY = "telegram_push"
 CHAT_KEY = "telegram_chat_id"
 MAX_TEXT = 3800  # Telegram allows 4096
+MAX_SEND_FAILURES = 3  # then that decision is left to the app
 API = "https://api.telegram.org/bot{token}/{method}"
 
 Button = tuple[str, dict[str, Any] | None]  # label, answer (None: open the app)
@@ -54,7 +55,15 @@ def _jobs_text(payload: dict[str, Any]) -> str:
 
 
 def render(decision: PendingDecision) -> tuple[str, list[Button]]:
-    """The message for one decision, and the buttons it can be answered with."""
+    """The message for one decision, and the buttons it can be answered with. Anything too
+    long to show in full gets no buttons: you only approve from the phone what you can read."""
+    text, buttons = _render(decision)
+    if len(text) > MAX_TEXT:
+        return text[:MAX_TEXT] + "\n…\nToo long to decide here: open JobPilot.", []
+    return text, buttons
+
+
+def _render(decision: PendingDecision) -> tuple[str, list[Button]]:
     p, cp = decision.payload, decision.payload.get("checkpoint", "")
     job = p.get("job") or {}
     if cp == "H3":
@@ -87,8 +96,6 @@ def render(decision: PendingDecision) -> tuple[str, list[Button]]:
             + (f"Attached: {files}\n" if files else "")
             + f"\n{d.get('body', '')}"
         )
-        if len(text) > MAX_TEXT:
-            return text[:MAX_TEXT] + "\n…\nToo long to approve here: open JobPilot.", []
         buttons: list[Button] = [("Discard", {"action": "discard"})]
         if "approve" in p.get("allowed", []):
             buttons.insert(0, ("Approve & send", {"action": "approve"}))
@@ -130,6 +137,7 @@ class TelegramApprovals:
         self._offset = 0
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._failures: dict[str, int] = {}
 
     # ---- Telegram API ---------------------------------------------------------------------
 
@@ -210,32 +218,40 @@ class TelegramApprovals:
                 self._close(chat, entry, "Decided in JobPilot.")
                 del state[interrupt_id]
                 changed = True
-        for interrupt_id, decision in pending.items():
-            if interrupt_id in state:
-                continue
-            text, buttons = render(decision)
-            actions = {secrets.token_urlsafe(12): answer for _, answer in buttons if answer}
-            keyboard = [
-                [{"text": label, "callback_data": f"jp:{tok}"}]
-                for (label, answer), tok in zip([b for b in buttons if b[1]], actions, strict=True)
-            ]
-            quiet = in_quiet_hours(self._quiet, self._tz, self._now())
-            msg = self._call(
-                "sendMessage",
-                chat_id=chat,
-                text=text,
-                disable_notification=quiet,
-                reply_markup={"inline_keyboard": keyboard} if keyboard else None,
-            )
-            state[interrupt_id] = {
-                "thread_id": decision.thread_id,
-                "message_id": msg["message_id"],
-                "actions": actions,
-                "text": text,
-            }
-            changed = True
         if changed:
             self._save(state)
+        for interrupt_id, decision in pending.items():
+            if interrupt_id in state or self._failures.get(interrupt_id, 0) >= MAX_SEND_FAILURES:
+                continue
+            try:
+                state[interrupt_id] = self._send(chat, decision)
+            except RuntimeError as exc:
+                self._failures[interrupt_id] = self._failures.get(interrupt_id, 0) + 1
+                log.warning("could not send decision %s to Telegram: %s", interrupt_id, exc)
+                continue
+            self._save(state)  # saved per message: a later failure never causes a resend
+
+    def _send(self, chat: str, decision: PendingDecision) -> dict[str, Any]:
+        text, buttons = render(decision)
+        answered = [b for b in buttons if b[1]]
+        actions = {secrets.token_urlsafe(12): answer for _, answer in answered}
+        keyboard = [
+            [{"text": label, "callback_data": f"jp:{tok}"}]
+            for (label, _), tok in zip(answered, actions, strict=True)
+        ]
+        msg = self._call(
+            "sendMessage",
+            chat_id=chat,
+            text=text,
+            disable_notification=in_quiet_hours(self._quiet, self._tz, self._now()),
+            reply_markup={"inline_keyboard": keyboard} if keyboard else None,
+        )
+        return {
+            "thread_id": decision.thread_id,
+            "message_id": msg["message_id"],
+            "actions": actions,
+            "text": text,
+        }
 
     def _close(self, chat: str, entry: dict[str, Any], note: str) -> None:
         try:

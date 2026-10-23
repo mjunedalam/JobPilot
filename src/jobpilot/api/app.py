@@ -23,6 +23,7 @@ from jobpilot.api.routes import (
     jobs,
     llm,
     mail,
+    notifications,
     portals,
     profile,
     system,
@@ -92,6 +93,7 @@ def create_app(
         mail,
         events,
         autopilot,
+        notifications,
     ):
         app.include_router(module.router, prefix=API_PREFIX)
     _register_error_handlers(app)
